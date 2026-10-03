@@ -25,6 +25,16 @@
 - 自創的壓縮格式要先花 token 教 AI 看懂，短內容反而虧。
 - 中文：一般 AI 的分詞方式，同樣意思中文約是英文的 2 倍 token（依模型不同，有的中文模型反過來）。
 
+【世界設定集（lorebook／world info／story cards）】（2026-10-03 補查）
+- 一個條目三部分：觸發關鍵字、內容、何時附上。
+- 內容寫 3～5 句，短而密，寫事實，別寫成百科文章。每個條目只回答一個問題（這座城是什麼？這個組織誰帶頭？魔法有什麼規矩？）。
+- 條目標題 AI 看不到，名稱一定要寫進內容裡。
+- 關鍵字用專有名詞（地名、組織名、人名），別用「城市」這種常見字，不然一直亂觸發。
+- 每回合都要附的東西別靠關鍵字，改放在「常駐」區（AI Dungeon 叫 Plot Essentials）。
+- 條目之間互相提到名字（地區寫到它的城鎮、人物寫到他常去的地方），一個被觸發會帶出相關的。
+- 重要的條目排前面；先從少量條目開始，用過再加。
+- 人物條目常見欄位：名稱、概述、外貌、個性、經歷。
+
 【來源】
 - https://tavernsprite.com/blog/sillytavern-character-card-best-practices/
 - https://aituts.com/sillytavern-guide/
@@ -35,3 +45,6 @@
 - https://medium.com/@ffkalapurackal/toon-vs-json-vs-yaml-token-efficiency-breakdown-for-llm-5d3e5dc9fb9c
 - https://synthorai.io/blog/cheapest-llm-by-language/
 - https://promptcost.org/en/blog/llm-tokenization-explained/
+- https://tavernsprite.com/blog/sillytavern-lorebooks-world-info-guide/
+- https://docs.novelai.net/en/text/lorebook/
+- https://arcanumrpgs.com/blog/ai-dungeon-story-cards/
