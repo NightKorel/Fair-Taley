@@ -49,6 +49,11 @@
 - 不睡：醒 17 小時≈酒測 0.05，24 小時≈0.10，48 小時開始不自主打瞌睡（微睡眠）、免疫力下降。
 - 失溫：核心體溫低於 35 度。依氣溫、風、濕、衣服、活動量，幾分鐘到幾小時不等；衣服濕掉散熱約變兩倍；風會帶走體溫；長時間待在 15 度左右又濕又有風也可能失溫。
 
+【走路與睡醒】（2026-10-03 補查）
+- Naismith 登山規則：平路每小時 5 公里，每爬升 600 公尺加 1 小時；沒有路的地形用每小時 4 公里。負重、地形、體能的修正方式各家說法不一。
+- 睡醒昏沉（sleep inertia）：通常 5～30 分鐘，多半 15～20 分鐘，偶爾到 60 分鐘，嚴重缺眠後更久。主觀清醒度醒來後 2 小時內還在改善。
+- 補眠：整夜沒睡後，下一晚約多睡 110 分鐘。
+
 【來源】
 - https://tavernsprite.com/blog/sillytavern-character-card-best-practices/
 - https://aituts.com/sillytavern-guide/
@@ -76,3 +81,6 @@
 - https://www.mayoclinic.org/diseases-conditions/hypothermia/symptoms-causes/syc-20352682
 - https://www.nationalacademies.org/read/10925/chapter/6
 - https://www.gssiweb.org/sports-science-exchange/article/sse-92-dietary-water-and-sodium-requirements-for-active-adults
+- https://en.wikipedia.org/wiki/Naismith%27s_rule
+- https://www.dovepress.com/sleep-inertia-current-insights-peer-reviewed-fulltext-article-NSS
+- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11510014/

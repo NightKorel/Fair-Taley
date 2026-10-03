@@ -16,8 +16,9 @@ const RATES = {
   sleepCapHours: 12,      // 睡眠時數上限
   badSleepQuality: 0.3,   // 品質低於這個就睡不著、睡一下就醒
   oversleepFatigue: 24,   // 入睡時疲勞到這裡（熬過一整天）會睡過頭
-  oversleepHours: 1.5,
-  groggyMinutes: 60,
+  oversleepHours: 1.8,    // 睡過頭多睡多久（查到：整夜沒睡後補眠約多睡 110 分鐘）
+  groggyMinutes: 60,       // 睡過頭醒來昏沉多久（查到：嚴重缺眠後可到 1 小時）
+  wakeGroggyMinutes: 15,   // 一般睡醒昏沉多久（查到：通常 15～20 分鐘）
   tempTolerance: 5,       // 身體靠發抖、流汗能自己撐住的度數，超出舒適範圍這麼多以內不會越來越冷或熱
   tempDriftFactor: 0.01,  // 體溫每小時偏移＝超出舒適範圍度數的平方×這個（扣掉身體能撐的度數後計算）
   tempRecoverPerHour: 2,  // 回到舒適範圍時每小時回正多少
@@ -29,6 +30,7 @@ const RATES = {
 const FATIGUE_NAMES = ['清醒', '微倦', '疲倦', '疲憊', '恍惚'];
 const FATIGUE_STAMINA = [1, 1, 0.85, 0.6, 0.4];
 const BED_REF = '地面 1、草堆 3、睡袋 5、普通床 7、好床 9';
+const COVER_REF = '薄毯約 5、普通棉被約 10、厚棉被約 15～20、羽絨睡袋約 15～30'; // 1 clo 約抵 7 度
 
 const WORLD_EXAMPLES = [
   '現代台灣，和現實一樣。',
@@ -211,10 +213,12 @@ function comfort(c, sleeping) {
   const d = sleeping ? RATES.sleepComfortShift : 0;
   return [c.comfortLow + d, c.comfortHigh + d];
 }
+let sleepCover = 0; // 睡覺時蓋的被子、毯子保暖度，只在睡覺時加上去
 function warmthUsed(c, ambient, sleeping) {
   const [lo, hi] = comfort(c, sleeping);
   const mid = (lo + hi) / 2;
-  return clamp(mid - ambient, c.warmMin, c.warmMax);
+  const add = sleeping ? sleepCover : 0; // 被子熱了可以踢開，所以只加在上限
+  return clamp(mid - ambient, c.warmMin, c.warmMax + add);
 }
 function feltTemp(c, ambient, sleeping) { return r1(ambient + warmthUsed(c, ambient, sleeping)); }
 
@@ -359,13 +363,14 @@ function buildTurnPrompt(action, actMode) {
 - 故事寫完後，在最後附上狀態區塊，格式照抄，填這一段的變化：
 【狀態】
 類型：一般（或 休息、睡覺）
-耗時：數字 加 分鐘、小時 或 天（睡覺不用填，網頁會算）
+耗時：數字 加 分鐘、小時 或 天（睡覺不用填，網頁會算。走路參考：平路每小時約 5 公里，沒有路約 4 公里，每爬升 600 公尺多加 1 小時）
 飢餓：這段吃東西恢復多少，沒吃填 0（滿是 ${r1(mx.hunger)}；參考：1 點約 67 大卡，一碗飯約 3、一頓正餐約 10、一整天的飯量約 36）
 口渴：這段喝水恢復多少，沒喝填 0（滿是 ${r1(mx.thirst)}；參考：1 點約 40 毫升，一杯水約 6、一公升約 25、一整天的水量約 72）
 體力：這段用力消耗多少，填負數，沒有填 0（滿是 ${r1(mx.stamina)}）
 血量：受傷填負數，沒有填 0（滿是 ${r1(mx.hp)}）
 氣溫：現在環境幾度（數字）
 寢具：睡覺才填，0～10（${BED_REF}）
+被子：睡覺才填，蓋的東西能抵多少度，沒蓋填 0（${COVER_REF}）
 【狀態結束】
 
 【世界觀】
@@ -434,7 +439,7 @@ function readAIReply() {
   }
   const set = (k, id) => { if (f[k] != null && !isNaN(num(f[k], NaN))) $(id).value = num(f[k]); };
   set('飢餓', 't_hunger'); set('口渴', 't_thirst'); set('體力', 't_stamina'); set('血量', 't_hp');
-  set('氣溫', 't_temp'); set('寢具', 't_bed');
+  set('氣溫', 't_temp'); set('寢具', 't_bed'); set('被子', 't_cover');
   refreshTurnForm();
   $('aiMsg').textContent = '已填入回合表，檢查後按「套用」。';
 }
@@ -444,7 +449,7 @@ function resetTurnForm() {
   if (!cur) return;
   $('t_type').value = '一般'; $('t_dur').value = 0; $('t_unit').value = '分鐘';
   ['t_hunger', 't_thirst', 't_stamina', 't_hp'].forEach(id => $(id).value = 0);
-  $('t_temp').value = cur.temp; $('t_bed').value = 2; $('t_wake').value = '';
+  $('t_temp').value = cur.temp; $('t_bed').value = 2; $('t_cover').value = 0; $('t_wake').value = '';
   $('t_wmin').value = cur.char.warmMin; $('t_wmax').value = cur.char.warmMax;
   refreshTurnForm();
 }
@@ -479,6 +484,7 @@ function applyTurn() {
 
   if (type === '睡覺') {
     const bed = num($('t_bed').value, 2);
+    sleepCover = num($('t_cover').value, 0);
     const q = sleepQuality(c, bed);
     let hours, result;
     if (q < RATES.badSleepQuality) {
@@ -497,14 +503,16 @@ function applyTurn() {
       const over = c.fatigue >= RATES.oversleepFatigue;
       hours = Math.min(RATES.sleepCapHours, Math.max(0.5, need) + (over ? RATES.oversleepHours : 0));
       result = over ? '睡過頭了，醒來有點昏沉' : q < 0.7 ? '睡得不好' : '睡得還不錯';
-      if (over) c.groggyUntil = -2; // 醒來時再設定
+      c.groggyUntil = over ? -2 : -3; // 醒來時再設定：-2 睡過頭、-3 一般
     }
     const wake = num($('t_wake').value, NaN);
     let woken = false;
     if (!isNaN(wake) && wake > 0 && wake < hours) { hours = wake; woken = true; }
     advance(Math.round(hours * 60), { sleep: q });
-    if (c.groggyUntil === -2) c.groggyUntil = woken ? -1 : cur.clock + RATES.groggyMinutes;
-    lines.push(`${who}睡了 ${r1(hours)} 小時（寢具 ${bed}），${woken ? '中途被弄醒' : result}。`);
+    if (c.groggyUntil === -2) c.groggyUntil = cur.clock + RATES.groggyMinutes;
+    else if (c.groggyUntil === -3) c.groggyUntil = cur.clock + RATES.wakeGroggyMinutes;
+    sleepCover = 0;
+    lines.push(`${who}睡了 ${r1(hours)} 小時（寢具 ${bed}${num($('t_cover').value) ? '、被子 ' + num($('t_cover').value) : ''}），${woken ? '中途被弄醒' : result}。`);
     if (fatigueStage(c) >= 1) lines.push(`醒來時還沒完全恢復，疲勞：${FATIGUE_NAMES[fatigueStage(c)]}。`);
   } else {
     let min = num($('t_dur').value);
@@ -519,7 +527,7 @@ function applyTurn() {
 
   // 變化提醒
   const st = fatigueStage(c);
-  if (st !== before.stage) lines.push(`疲勞變成「${FATIGUE_NAMES[st]}」。`);
+  if (st !== before.stage && type !== '睡覺') lines.push(`疲勞變成「${FATIGUE_NAMES[st]}」。`);
   const tw = tempWord(c.bodyTemp);
   if (tw !== before.temp) lines.push(`${who}現在覺得${tw === '正常' ? '冷熱剛好' : tw}。`);
   if (before.hunger && c.hunger <= 0) lines.push(`${who}餓到極限了，身體開始受損。`);
