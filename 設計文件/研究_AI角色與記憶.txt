@@ -35,6 +35,12 @@
 - 重要的條目排前面；先從少量條目開始，用過再加。
 - 人物條目常見欄位：名稱、概述、外貌、個性、經歷。
 
+【體溫與衣物】（2026-10-03 補查）
+- 裸身、靜止的人覺得舒適（身體不用發抖也不用流汗）的環境溫度約 28～32 度，個人差異很大（體型、年齡、性別、習慣）。也有研究量到下限低到 23 度左右。
+- 衣服保暖用 clo 衡量：1 clo＝穿西裝在 21 度靜坐剛好舒服。10 度要約 2.7 clo，0 度要約 4 clo。換算下來 1 clo 約抵 7 度。
+- 整套參考：短褲短袖 0.36 clo、長袖長褲 0.61、加西裝外套 0.96、冬天整套約 1～2。
+- 以上都是「靜止不動」的數字，走路、做事時身體會發熱，舒服的溫度會低一些。
+
 【來源】
 - https://tavernsprite.com/blog/sillytavern-character-card-best-practices/
 - https://aituts.com/sillytavern-guide/
@@ -48,3 +54,7 @@
 - https://tavernsprite.com/blog/sillytavern-lorebooks-world-info-guide/
 - https://docs.novelai.net/en/text/lorebook/
 - https://arcanumrpgs.com/blog/ai-dungeon-story-cards/
+- https://en.wikipedia.org/wiki/Thermal_neutral_zone
+- https://pmc.ncbi.nlm.nih.gov/articles/PMC4580796/
+- https://en.wikipedia.org/wiki/Clothing_insulation
+- https://www.engineeringtoolbox.com/clo-clothing-thermal-insulation-d_732.html
