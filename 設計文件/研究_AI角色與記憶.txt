@@ -1,0 +1,37 @@
+研究筆記：怎麼餵 AI 角色個性、經歷與記憶，又省 token（2026-10-03 上網查）
+這是查到的資料整理，還沒拍板。要用之前先跟納可確認。
+========================================
+
+【個性】
+- 寫成短的具體行為句，少用形容詞散文。例：「被逼急就開玩笑帶過」，不寫「她是那種被逼急時傾向以幽默退縮的人」。
+- 舊的 W++ 括號格式（[Character("某某") + Age("24")]）多數指南認為浪費 token，現代模型讀普通段落比較好。（也有網站唱反調，以多數意見為準。）
+- 2～3 段示範對話最能定住角色的說話方式，但也最耗 token。
+- 每次都附上的角色卡，指南建議 300～600 token，最多 1000 以內。
+- 地點、勢力、配角等資料移出角色卡，放進關鍵字觸發的資料庫（社群叫 lorebook），需要時才附。
+
+【經歷與記憶】
+- 遞迴摘要：舊摘要＋最近的內容 → 新摘要，研究證實能讓長對話前後一致。（Wang 等，2023）
+- Generative Agents（史丹佛，2023）：
+  · 所有經歷記成一條條短句（記憶流）。
+  · 挑記憶的依據：重要度、多近發生、跟眼前情況相不相關。
+  · 只記原始事件時 AI 歸納不出東西，所以加「反思」：從經歷得出的結論（例：「他不再相信陌生人」）。
+- 關鍵字觸發的資料庫，跟核心設計裡的「進階 AI 模式：AI 主動查資料」是同一個方向。
+
+【擺放位置】
+- Lost in the Middle（2023）：資訊放在提示詞開頭或結尾，AI 用得最好；放中間容易被忽略。
+
+【格式與 token】
+- JSON 最耗（每筆都重複欄位名和括號）。YAML、簡單條列比較省。
+- 自創的壓縮格式要先花 token 教 AI 看懂，短內容反而虧。
+- 中文：一般 AI 的分詞方式，同樣意思中文約是英文的 2 倍 token（依模型不同，有的中文模型反過來）。
+
+【來源】
+- https://tavernsprite.com/blog/sillytavern-character-card-best-practices/
+- https://aituts.com/sillytavern-guide/
+- https://chatjanitor.com/blog/janitor-ai-character-card-templates
+- https://arxiv.org/abs/2308.15022
+- https://ar5iv.labs.arxiv.org/html/2304.03442
+- https://arxiv.org/pdf/2307.03172
+- https://medium.com/@ffkalapurackal/toon-vs-json-vs-yaml-token-efficiency-breakdown-for-llm-5d3e5dc9fb9c
+- https://synthorai.io/blog/cheapest-llm-by-language/
+- https://promptcost.org/en/blog/llm-tokenization-explained/
