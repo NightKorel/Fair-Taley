@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>存活模擬</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1 id="title" onclick="showHome()">存活模擬</h1>
+  <div class="topbar-right">
+    <span id="storyName"></span>
+    <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
+  </div>
+</header>
+
+<!-- 首頁：故事列表 -->
+<main id="home" class="page">
+  <section class="card">
+    <h2>我的故事</h2>
+    <div id="storyList"></div>
+    <div class="row gap">
+      <button onclick="showSetup()">開新故事</button>
+      <label class="button ghost">匯入存檔<input type="file" accept=".json" onchange="importSave(event)" hidden></label>
+    </div>
+  </section>
+  <section class="card muted small">
+    <p>這是拿來寫小說的生存框架。網頁負責記住、計算、檢查：時間、飢渴、疲勞、冷熱、睡眠；AI（或你自己）負責判斷和描述。</p>
+    <p>存檔放在這個瀏覽器裡。換電腦或清瀏覽器資料前，記得先匯出備份。</p>
+  </section>
+</main>
+
+<!-- 開新故事 -->
+<main id="setup" class="page hidden">
+  <section class="card">
+    <h2>開新故事</h2>
+    <div class="grid2">
+      <label>故事名稱<input id="s_title" placeholder="例：北坡的冬天"></label>
+      <label>故事人稱
+        <select id="s_person">
+          <option>第三人稱</option><option>第一人稱</option><option>第二人稱</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>交給 AI 幫忙設定（可以跳過）</h3>
+    <p class="small muted">寫幾句大概的想法，按「複製提示詞」貼給 AI，再把 AI 的回覆貼回來，下面的欄位會自動填好，你再修改。</p>
+    <textarea id="s_idea" rows="3" placeholder="例：1930 年代東北林區，一個不太會說話的年輕獵人，深秋清晨在山裡迷路。"></textarea>
+    <div class="row gap"><button class="ghost" onclick="copySetupPrompt()">複製提示詞</button></div>
+    <textarea id="s_reply" rows="4" placeholder="把 AI 的回覆貼在這裡"></textarea>
+    <div class="row gap"><button class="ghost" onclick="applySetupReply()">讀取 AI 回覆，填入欄位</button><span id="s_msg" class="small"></span></div>
+  </section>
+
+  <section class="card">
+    <h3>世界觀</h3>
+    <p class="small muted">自由填寫。跟現實一樣的部分，寫大概哪個年代、哪裡就好。範例：
+      <a href="#" onclick="return fillWorld(0)">現代都市</a>、
+      <a href="#" onclick="return fillWorld(1)">清末鄉村</a>、
+      <a href="#" onclick="return fillWorld(2)">有魔法的中世紀</a></p>
+    <textarea id="s_world" rows="4"></textarea>
+    <div class="grid3">
+      <label>開始的日期<input id="s_date" placeholder="例：1931 年 10 月 3 日、深秋"></label>
+      <label>開始的時間<input id="s_time" type="time" value="06:00"></label>
+      <label>起點氣溫（°C）<input id="s_temp" type="number" step="0.5" value="12"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>角色</h3>
+    <div class="grid3">
+      <label>名字<input id="c_name" placeholder="例：阿青"></label>
+      <label>身高（公分）<input id="c_height" type="number" value="170"></label>
+      <label>體重（公斤）<input id="c_weight" type="number" value="65"></label>
+    </div>
+    <p class="small muted">六屬性：一般人約 10，常人頂尖約 18，可以有小數點後一位。</p>
+    <div class="grid6">
+      <label>力量<input id="c_str" type="number" step="0.1" value="10"></label>
+      <label>敏捷<input id="c_dex" type="number" step="0.1" value="10"></label>
+      <label>體質<input id="c_con" type="number" step="0.1" value="10"></label>
+      <label>智力<input id="c_int" type="number" step="0.1" value="10"></label>
+      <label>感知<input id="c_wis" type="number" step="0.1" value="10"></label>
+      <label>魅力<input id="c_cha" type="number" step="0.1" value="10"></label>
+    </div>
+    <div class="grid4">
+      <label>舒適溫度下限<input id="c_clow" type="number" value="15"></label>
+      <label>舒適溫度上限<input id="c_chigh" type="number" value="28"></label>
+      <label>身上衣物保暖下限<input id="c_wmin" type="number" step="0.5" value="1"></label>
+      <label>身上衣物保暖上限<input id="c_wmax" type="number" step="0.5" value="3"></label>
+    </div>
+    <p class="small muted">衣物保暖度例：薄衣 0～1、毛衣 3～5、厚外套 5～8，多件就把上下限各自加起來。</p>
+    <label>個性（用短的行為句，一行一句）<textarea id="c_personality" rows="3" placeholder="例：被逼急就開玩笑帶過&#10;不輕易相信陌生人"></textarea></label>
+    <label>背景與經歷<textarea id="c_background" rows="3"></textarea></label>
+    <label>說話方式<textarea id="c_speech" rows="2" placeholder="例：話很少，習慣用「嗯」回答"></textarea></label>
+  </section>
+
+  <div class="row gap">
+    <button onclick="createStory()">開始故事</button>
+    <button class="ghost" onclick="showHome()">取消</button>
+  </div>
+</main>
+
+<!-- 主畫面 -->
+<main id="play" class="page hidden">
+  <div class="layout">
+    <aside class="side">
+      <section class="card">
+        <div class="clock" id="clock"></div>
+        <div class="small muted" id="clockSub"></div>
+      </section>
+      <section class="card" id="statusCard"></section>
+      <section class="card small" id="charCard"></section>
+      <section class="card">
+        <div class="row gap wrap">
+          <button class="ghost" onclick="exportSave()">匯出存檔</button>
+          <button class="ghost" onclick="undoTurn()">復原上一回合</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="mainCol">
+      <section class="card log" id="log"></section>
+
+      <section class="card">
+        <div class="row gap">
+          <div class="toggle">
+            <button id="m_char" onclick="setMode('角色')">角色</button>
+            <button id="m_author" onclick="setMode('作者')">作者</button>
+          </div>
+          <span class="small muted" id="modeHint"></span>
+        </div>
+        <textarea id="input" rows="3"></textarea>
+        <div class="row gap wrap">
+          <button onclick="copyTurnPrompt()">複製提示詞給 AI</button>
+          <button class="ghost" onclick="recordOnly()">只記錄（不用 AI）</button>
+        </div>
+        <details id="pasteBox">
+          <summary>貼上 AI 回覆</summary>
+          <textarea id="aiReply" rows="6" placeholder="把 AI 的整段回覆貼在這裡"></textarea>
+          <button class="ghost" onclick="readAIReply()">讀取回覆</button>
+          <span id="aiMsg" class="small"></span>
+        </details>
+      </section>
+
+      <section class="card">
+        <h3>回合表</h3>
+        <p class="small muted">這回合發生的事。用 AI 時會自動填好，你看過可以改；不用 AI 時自己填。填好按「套用」，網頁才會推進時間、計算狀態。</p>
+        <div class="grid4">
+          <label>類型
+            <select id="t_type" onchange="refreshTurnForm()">
+              <option>一般</option><option>休息</option><option>睡覺</option>
+            </select>
+          </label>
+          <label class="t_notsleep">耗時<input id="t_dur" type="number" step="0.1" value="0"></label>
+          <label class="t_notsleep">單位
+            <select id="t_unit"><option>分鐘</option><option>小時</option><option>天</option></select>
+          </label>
+          <label>環境氣溫（°C）<input id="t_temp" type="number" step="0.5"></label>
+          <label>飢餓（吃東西填正數）<input id="t_hunger" type="number" value="0"></label>
+          <label>口渴（喝水填正數）<input id="t_thirst" type="number" value="0"></label>
+          <label class="t_notsleep">體力（用力填負數）<input id="t_stamina" type="number" value="0"></label>
+          <label>血量（受傷填負數）<input id="t_hp" type="number" value="0"></label>
+          <label class="t_sleep">寢具舒適度（0～10）<input id="t_bed" type="number" step="0.5" value="2"></label>
+          <label class="t_sleep">被弄醒（睡幾小時後，可空白）<input id="t_wake" type="number" step="0.1"></label>
+          <label>衣物保暖下限<input id="t_wmin" type="number" step="0.5"></label>
+          <label>衣物保暖上限<input id="t_wmax" type="number" step="0.5"></label>
+        </div>
+        <p class="small muted t_sleep">寢具參考：地面 1、草堆 3、睡袋 5、普通床 7、好床 9。睡多久由網頁算，角色沒辦法自己決定。</p>
+        <div class="row gap"><button onclick="applyTurn()">套用</button><button class="ghost" onclick="resetTurnForm()">清空</button></div>
+      </section>
+    </section>
+  </div>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
