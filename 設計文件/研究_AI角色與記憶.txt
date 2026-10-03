@@ -42,6 +42,13 @@
 - 以上都是「靜止不動」的數字，走路、做事時身體會發熱，舒服的溫度會低一些。
 - 活動量影響：同樣穿著，坐著約 24.3 度舒服、站著 23.3、慢走（每小時 1 公里）22.2、每小時 2 公里 21.1。正常走路（每小時 4～6 公里）代謝是坐著的 3～4.5 倍，舒服的溫度會再低。遊戲裡活動時的 22～26 度是從這裡推估的，暫定。
 
+【生存極限】（2026-10-03 補查）
+- 不喝水：一般 3～5 天；涼爽又不動最多約 7 天；沙漠高溫可能不到 1 天。第 1 天口乾、第 2 天血量減少體溫升高、第 3 天起器官開始衰竭。
+- 不吃飯（有水）：約 3～8 週。前 1～2 天用完肝醣（疲倦、頭痛、煩躁），之後燒脂肪到約 3 週，再來分解肌肉、器官受損。
+- 每天需要：水約 2.7～3.7 公升（女／男），勞動多加約 1 公升，炎熱環境 4～12 公升；熱量約 2000～2500 大卡。
+- 不睡：醒 17 小時≈酒測 0.05，24 小時≈0.10，48 小時開始不自主打瞌睡（微睡眠）、免疫力下降。
+- 失溫：核心體溫低於 35 度。依氣溫、風、濕、衣服、活動量，幾分鐘到幾小時不等；衣服濕掉散熱約變兩倍；風會帶走體溫；長時間待在 15 度左右又濕又有風也可能失溫。
+
 【來源】
 - https://tavernsprite.com/blog/sillytavern-character-card-best-practices/
 - https://aituts.com/sillytavern-guide/
@@ -61,3 +68,11 @@
 - https://www.engineeringtoolbox.com/clo-clothing-thermal-insulation-d_732.html
 - https://www.sciencedirect.com/science/article/abs/pii/S0360132320306090
 - https://en.wikipedia.org/wiki/Thermal_comfort
+- https://en.wikipedia.org/wiki/Rule_of_threes_(survival)
+- https://www.medicalnewstoday.com/articles/325174
+- https://embracerelief.org/blog/how-long-can-you-go-without-food
+- https://www.cdc.gov/niosh/work-hour-training-for-nurses/longhours/mod3/08.html
+- https://sleepcycle.com/sleep-talk/how-long-can-you-go-without-sleep
+- https://www.mayoclinic.org/diseases-conditions/hypothermia/symptoms-causes/syc-20352682
+- https://www.nationalacademies.org/read/10925/chapter/6
+- https://www.gssiweb.org/sports-science-exchange/article/sse-92-dietary-water-and-sodium-requirements-for-active-adults

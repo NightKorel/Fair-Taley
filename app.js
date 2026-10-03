@@ -2,24 +2,29 @@
 // 分工：AI（或玩家）判斷和描述，這裡負責記住、計算、檢查。
 // 下面的數字全部是暫定，實際玩過再調。
 
+// 2026-10-03 依上網查的資料調整（來源見 設計文件/研究_AI角色與記憶.txt）
 const RATES = {
-  hungerPerHour: 1.5,     // 飢餓每小時掉多少（上限＝體質×10）
-  thirstPerHour: 3,       // 口渴每小時掉多少
-  starveHpPerHour: 0.3,   // 飢餓見底時每小時扣血
-  dehydrateHpPerHour: 2,  // 口渴見底時每小時扣血
-  fatigueAwakePerHour: 3.75, // 醒著每小時累積疲勞（滿 100，醒 16 小時約到 60）
-  fatigueSleepPerHour: 7.5,  // 品質正常時每小時消除疲勞（約 8 小時消掉 60）
+  hungerPerHour: 1.5,     // 飢餓每小時掉多少（上限＝體質×10）。一天約 36＝一天的飯量（約 2400 大卡），1 點約 67 大卡
+  thirstPerHour: 3,       // 口渴每小時掉多少。一天約 72＝一天的水量（約 3 公升），1 點約 40 毫升
+  hotThirstMult: 1.5,     // 熱到流汗（體感高過舒適範圍）時口渴掉得快幾倍
+  starveHpPerHour: 0.12,  // 飢餓見底時每小時扣血（一般人總共約撐 5 週；查到：有水喝約 3～8 週）
+  dehydrateHpPerHour: 2,  // 口渴見底時每小時扣血（一般人總共約撐 3.5 天；查到：約 3～5 天）
+  fatigueAwakePerHour: 1, // 疲勞＝相當於醒了幾小時，醒著每小時 +1
+  fatigueMax: 48,
+  fatigueStages: [8, 16, 24, 40], // 醒幾小時進入 微倦／疲倦／疲憊／恍惚（查到：醒 17 小時≈酒測 0.05、24 小時≈0.10、48 小時開始不自主打瞌睡）
+  fatigueSleepPerHour: 2, // 品質正常時每小時消除多少（睡 8 小時消掉醒 16 小時）
   sleepCapHours: 12,      // 睡眠時數上限
   badSleepQuality: 0.3,   // 品質低於這個就睡不著、睡一下就醒
-  oversleepFatigue: 80,   // 入睡時疲勞到這裡會睡過頭
+  oversleepFatigue: 24,   // 入睡時疲勞到這裡（熬過一整天）會睡過頭
   oversleepHours: 1.5,
   groggyMinutes: 60,
-  tempDriftPerDegree: 0.1, // 體感每超出舒適範圍 1 度，每小時體溫偏多少
-  tempRecoverPerHour: 1,   // 回到舒適範圍時每小時回正多少
-  tempDanger: 7,           // 體溫偏到這裡開始扣血（範圍 -10～10）
-  tempHpPerHour: 1,
-  restFullMinutes: 30,     // 休息多久體力回滿
-  sleepComfortShift: 6,    // 舒適溫度以活動時為準，睡覺（靜止）時往上加幾度
+  tempTolerance: 5,       // 身體靠發抖、流汗能自己撐住的度數，超出舒適範圍這麼多以內不會越來越冷或熱
+  tempDriftFactor: 0.01,  // 體溫每小時偏移＝超出舒適範圍度數的平方×這個（扣掉身體能撐的度數後計算）
+  tempRecoverPerHour: 2,  // 回到舒適範圍時每小時回正多少
+  tempDanger: 7,          // 體溫偏到這裡開始扣血（範圍 -10～10）
+  tempHpPerHour: 5,       // 到危險時每小時扣血，越偏越多（偏到底約每小時 20）
+  restFullMinutes: 30,    // 休息多久體力回滿
+  sleepComfortShift: 6,   // 舒適溫度以活動時為準，睡覺（靜止）時往上加幾度
 };
 const FATIGUE_NAMES = ['清醒', '微倦', '疲倦', '疲憊', '恍惚'];
 const FATIGUE_STAMINA = [1, 1, 0.85, 0.6, 0.4];
@@ -182,7 +187,7 @@ function createStory() {
   save(); undoStack = []; enterPlay();
 }
 
-function openStory(id) { cur = stories[id]; undoStack = []; enterPlay(); }
+function openStory(id) { cur = stories[id]; if (cur.char.fatigue > RATES.fatigueMax) cur.char.fatigue = RATES.fatigueMax; undoStack = []; enterPlay(); }
 function enterPlay() { showPage('play'); setMode('角色'); resetTurnForm(); renderAll(); }
 
 // ---------- 時間與計算 ----------
@@ -200,7 +205,7 @@ function maxes(c) {
   const stage = fatigueStage(c);
   return { hp: base, hunger: base, thirst: base, stamina: r1(base * FATIGUE_STAMINA[stage]) };
 }
-function fatigueStage(c) { return Math.min(4, Math.floor(c.fatigue / 20)); }
+function fatigueStage(c) { return RATES.fatigueStages.filter(t => c.fatigue >= t).length; }
 // 舒適範圍：平常以活動時為準，睡覺時是靜止，往上移
 function comfort(c, sleeping) {
   const d = sleeping ? RATES.sleepComfortShift : 0;
@@ -222,18 +227,21 @@ function advance(minutes, opts = {}) {
     const h = dt / 60;
     const mx = maxes(c);
     c.hunger = Math.max(0, c.hunger - RATES.hungerPerHour * h);
-    c.thirst = Math.max(0, c.thirst - RATES.thirstPerHour * h);
+    const sweating = feltTemp(c, cur.temp, !!opts.sleep) > comfort(c, !!opts.sleep)[1];
+    c.thirst = Math.max(0, c.thirst - RATES.thirstPerHour * (sweating ? RATES.hotThirstMult : 1) * h);
     if (c.hunger <= 0) c.hp -= RATES.starveHpPerHour * h;
     if (c.thirst <= 0) c.hp -= RATES.dehydrateHpPerHour * h;
     if (opts.sleep) c.fatigue = Math.max(0, c.fatigue - RATES.fatigueSleepPerHour * opts.sleep * h);
-    else c.fatigue = Math.min(100, c.fatigue + RATES.fatigueAwakePerHour * h);
+    else c.fatigue = Math.min(RATES.fatigueMax, c.fatigue + RATES.fatigueAwakePerHour * h);
     const felt = feltTemp(c, cur.temp, !!opts.sleep);
     const [lo, hi] = comfort(c, !!opts.sleep);
-    if (felt < lo) c.bodyTemp -= (lo - felt) * RATES.tempDriftPerDegree * h;
-    else if (felt > hi) c.bodyTemp += (felt - hi) * RATES.tempDriftPerDegree * h;
+    const over = felt < lo ? lo - felt : felt > hi ? felt - hi : 0;
+    const push = Math.max(0, over - RATES.tempTolerance);
+    if (push > 0) c.bodyTemp += (felt < lo ? -1 : 1) * push ** 2 * RATES.tempDriftFactor * h;
+    else if (over > 0) { /* 身體撐得住，不惡化也不回暖 */ }
     else c.bodyTemp = c.bodyTemp > 0 ? Math.max(0, c.bodyTemp - RATES.tempRecoverPerHour * h) : Math.min(0, c.bodyTemp + RATES.tempRecoverPerHour * h);
     c.bodyTemp = clamp(c.bodyTemp, -10, 10);
-    if (Math.abs(c.bodyTemp) >= RATES.tempDanger) c.hp -= RATES.tempHpPerHour * h;
+    if (Math.abs(c.bodyTemp) >= RATES.tempDanger) c.hp -= RATES.tempHpPerHour * (1 + Math.abs(c.bodyTemp) - RATES.tempDanger) * h;
     if (opts.sleep || opts.rest) c.stamina += mx.stamina * (dt / RATES.restFullMinutes);
     c.stamina = clamp(c.stamina, 0, maxes(c).stamina);
     if (c.hp <= 0) { c.hp = 0; c.dead = true; }
@@ -352,8 +360,8 @@ function buildTurnPrompt(action, actMode) {
 【狀態】
 類型：一般（或 休息、睡覺）
 耗時：數字 加 分鐘、小時 或 天（睡覺不用填，網頁會算）
-飢餓：這段吃東西恢復多少，沒吃填 0（滿是 ${r1(mx.hunger)}）
-口渴：這段喝水恢復多少，沒喝填 0（滿是 ${r1(mx.thirst)}）
+飢餓：這段吃東西恢復多少，沒吃填 0（滿是 ${r1(mx.hunger)}；參考：1 點約 67 大卡，一碗飯約 3、一頓正餐約 10、一整天的飯量約 36）
+口渴：這段喝水恢復多少，沒喝填 0（滿是 ${r1(mx.thirst)}；參考：1 點約 40 毫升，一杯水約 6、一公升約 25、一整天的水量約 72）
 體力：這段用力消耗多少，填負數，沒有填 0（滿是 ${r1(mx.stamina)}）
 血量：受傷填負數，沒有填 0（滿是 ${r1(mx.hp)}）
 氣溫：現在環境幾度（數字）
@@ -497,7 +505,7 @@ function applyTurn() {
     advance(Math.round(hours * 60), { sleep: q });
     if (c.groggyUntil === -2) c.groggyUntil = woken ? -1 : cur.clock + RATES.groggyMinutes;
     lines.push(`${who}睡了 ${r1(hours)} 小時（寢具 ${bed}），${woken ? '中途被弄醒' : result}。`);
-    if (c.fatigue >= 20) lines.push(`醒來時還沒完全恢復，疲勞：${FATIGUE_NAMES[fatigueStage(c)]}。`);
+    if (fatigueStage(c) >= 1) lines.push(`醒來時還沒完全恢復，疲勞：${FATIGUE_NAMES[fatigueStage(c)]}。`);
   } else {
     let min = num($('t_dur').value);
     const unit = $('t_unit').value;
