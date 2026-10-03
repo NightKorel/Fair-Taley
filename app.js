@@ -19,6 +19,7 @@ const RATES = {
   tempDanger: 7,           // 體溫偏到這裡開始扣血（範圍 -10～10）
   tempHpPerHour: 1,
   restFullMinutes: 30,     // 休息多久體力回滿
+  sleepComfortShift: 6,    // 舒適溫度以活動時為準，睡覺（靜止）時往上加幾度
 };
 const FATIGUE_NAMES = ['清醒', '微倦', '疲倦', '疲憊', '恍惚'];
 const FATIGUE_STAMINA = [1, 1, 0.85, 0.6, 0.4];
@@ -114,7 +115,7 @@ ${idea}
 智力：
 感知：
 魅力：
-舒適溫度：（沒穿衣服、靜止時覺得舒服的溫度，一般人約 28～32，怕冷的人往上移，怕熱的往下移）
+舒適溫度：（沒穿衣服、走動做事時覺得舒服的溫度，一般人約 22～26，怕冷的人往上移，怕熱的往下移）
 衣物保暖：（身上整套衣物能抵多少度，寫下限～上限。參考：短袖短褲約 2～3、長袖長褲約 3～4.5、再加外套約 5～7、冬天整套厚衣約 10～14、極地裝約 25～30）
 個性：（短的具體行為句，例「被逼急就開玩笑帶過」，用；分隔）
 背景：
@@ -200,11 +201,17 @@ function maxes(c) {
   return { hp: base, hunger: base, thirst: base, stamina: r1(base * FATIGUE_STAMINA[stage]) };
 }
 function fatigueStage(c) { return Math.min(4, Math.floor(c.fatigue / 20)); }
-function warmthUsed(c, ambient) {
-  const mid = (c.comfortLow + c.comfortHigh) / 2;
+// 舒適範圍：平常以活動時為準，睡覺時是靜止，往上移
+function comfort(c, sleeping) {
+  const d = sleeping ? RATES.sleepComfortShift : 0;
+  return [c.comfortLow + d, c.comfortHigh + d];
+}
+function warmthUsed(c, ambient, sleeping) {
+  const [lo, hi] = comfort(c, sleeping);
+  const mid = (lo + hi) / 2;
   return clamp(mid - ambient, c.warmMin, c.warmMax);
 }
-function feltTemp(c, ambient) { return r1(ambient + warmthUsed(c, ambient)); }
+function feltTemp(c, ambient, sleeping) { return r1(ambient + warmthUsed(c, ambient, sleeping)); }
 
 // 把時間往前推 minutes 分鐘，opts.sleep：睡覺品質；opts.rest：休息
 function advance(minutes, opts = {}) {
@@ -220,9 +227,10 @@ function advance(minutes, opts = {}) {
     if (c.thirst <= 0) c.hp -= RATES.dehydrateHpPerHour * h;
     if (opts.sleep) c.fatigue = Math.max(0, c.fatigue - RATES.fatigueSleepPerHour * opts.sleep * h);
     else c.fatigue = Math.min(100, c.fatigue + RATES.fatigueAwakePerHour * h);
-    const felt = feltTemp(c, cur.temp);
-    if (felt < c.comfortLow) c.bodyTemp -= (c.comfortLow - felt) * RATES.tempDriftPerDegree * h;
-    else if (felt > c.comfortHigh) c.bodyTemp += (felt - c.comfortHigh) * RATES.tempDriftPerDegree * h;
+    const felt = feltTemp(c, cur.temp, !!opts.sleep);
+    const [lo, hi] = comfort(c, !!opts.sleep);
+    if (felt < lo) c.bodyTemp -= (lo - felt) * RATES.tempDriftPerDegree * h;
+    else if (felt > hi) c.bodyTemp += (felt - hi) * RATES.tempDriftPerDegree * h;
     else c.bodyTemp = c.bodyTemp > 0 ? Math.max(0, c.bodyTemp - RATES.tempRecoverPerHour * h) : Math.min(0, c.bodyTemp + RATES.tempRecoverPerHour * h);
     c.bodyTemp = clamp(c.bodyTemp, -10, 10);
     if (Math.abs(c.bodyTemp) >= RATES.tempDanger) c.hp -= RATES.tempHpPerHour * h;
@@ -235,8 +243,9 @@ function advance(minutes, opts = {}) {
 
 function sleepQuality(c, bed) {
   let q = clamp(bed / 7, 0.1, 1.25);
-  const felt = feltTemp(c, cur.temp);
-  if (felt < c.comfortLow || felt > c.comfortHigh) q *= 0.6;
+  const felt = feltTemp(c, cur.temp, true);
+  const [lo, hi] = comfort(c, true);
+  if (felt < lo || felt > hi) q *= 0.6;
   const mx = maxes(c);
   if (c.hunger / mx.hunger < 0.2 || c.thirst / mx.thirst < 0.2) q *= 0.6;
   return q;
@@ -279,7 +288,7 @@ function renderStatus() {
   const a = c.attr;
   $('charCard').innerHTML = `<span style="color:var(--accent)">${esc(c.name)}</span>　${c.height} 公分・${c.weight} 公斤<br>
     力量 ${a.力量}　敏捷 ${a.敏捷}　體質 ${a.體質}<br>智力 ${a.智力}　感知 ${a.感知}　魅力 ${a.魅力}<br>
-    <span class="muted">舒適 ${c.comfortLow}～${c.comfortHigh} 度・衣物保暖 ${c.warmMin}～${c.warmMax}</span>`;
+    <span class="muted">舒適 ${c.comfortLow}～${c.comfortHigh} 度（睡覺 ${c.comfortLow + RATES.sleepComfortShift}～${c.comfortHigh + RATES.sleepComfortShift}）・衣物保暖 ${c.warmMin}～${c.warmMax}</span>`;
 }
 function tempWord(t) {
   if (t <= -RATES.tempDanger) return '失溫';
@@ -468,8 +477,9 @@ function applyTurn() {
       hours = 1.5;
       const why = [];
       if (bed < 3) why.push('睡的地方太硬');
-      const felt = feltTemp(c, cur.temp);
-      if (felt < c.comfortLow) why.push('太冷'); else if (felt > c.comfortHigh) why.push('太熱');
+      const felt = feltTemp(c, cur.temp, true);
+      const [lo, hi] = comfort(c, true);
+      if (felt < lo) why.push('太冷'); else if (felt > hi) why.push('太熱');
       const m2 = maxes(c);
       if (c.hunger / m2.hunger < 0.2) why.push('太餓');
       if (c.thirst / m2.thirst < 0.2) why.push('太渴');

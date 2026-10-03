@@ -40,6 +40,7 @@
 - 衣服保暖用 clo 衡量：1 clo＝穿西裝在 21 度靜坐剛好舒服。10 度要約 2.7 clo，0 度要約 4 clo。換算下來 1 clo 約抵 7 度。
 - 整套參考：短褲短袖 0.36 clo、長袖長褲 0.61、加西裝外套 0.96、冬天整套約 1～2。
 - 以上都是「靜止不動」的數字，走路、做事時身體會發熱，舒服的溫度會低一些。
+- 活動量影響：同樣穿著，坐著約 24.3 度舒服、站著 23.3、慢走（每小時 1 公里）22.2、每小時 2 公里 21.1。正常走路（每小時 4～6 公里）代謝是坐著的 3～4.5 倍，舒服的溫度會再低。遊戲裡活動時的 22～26 度是從這裡推估的，暫定。
 
 【來源】
 - https://tavernsprite.com/blog/sillytavern-character-card-best-practices/
@@ -58,3 +59,5 @@
 - https://pmc.ncbi.nlm.nih.gov/articles/PMC4580796/
 - https://en.wikipedia.org/wiki/Clothing_insulation
 - https://www.engineeringtoolbox.com/clo-clothing-thermal-insulation-d_732.html
+- https://www.sciencedirect.com/science/article/abs/pii/S0360132320306090
+- https://en.wikipedia.org/wiki/Thermal_comfort
