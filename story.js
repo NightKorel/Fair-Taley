@@ -115,3 +115,36 @@ function saveEdit() {
   $('storyName').textContent = cur.title;
   toast(changed.length ? '已更新' : '沒有變動');
 }
+
+// ---------- 出場的生物：AI 要明確設定體型（納可 2026-10-04） ----------
+function parseCreatures(f) {
+  const v = f['生物'];
+  if (!v || /^(無|沒有)$/.test(v.trim())) return;
+  if (!cur.creatures) cur.creatures = [];
+  v.split(/[；;]/).map(x => x.trim()).filter(Boolean).forEach(e => {
+    const p = e.split(/[｜|]/).map(x => x.trim());
+    if (!p[0] || /^(無|沒有)$/.test(p[0])) return;
+    const size = p[1] || '', kg = num(p[2], NaN), note = p[3] || '';
+    if (cur.creatures.some(c => c.name === p[0])) return;
+    cur.creatures.push({ name: p[0], size, kg: isNaN(kg) ? null : kg, note });
+    addLog('系統', `登記生物：${p[0]}（${size ? size + (/公分|cm/.test(size) ? '' : ' 公分') : '體型未寫'}${isNaN(kg) ? '' : '，' + kg + ' 公斤'}）${note ? '，' + note : ''}。`);
+  });
+}
+function creaturesForPrompt() {
+  if (!cur.creatures || !cur.creatures.length) return '';
+  return `\n【出場過的生物】（體型照這裡寫）\n${cur.creatures.map(c => `${c.name}：${c.size}${/公分|cm/.test(c.size) ? '' : ' 公分'}，${c.kg ?? '?'} 公斤${c.note ? '，' + c.note : ''}`).join('\n')}\n`;
+}
+
+// ---------- 按版本號看更新日誌 ----------
+async function openChangelog() {
+  openModal('logModal');
+  $('logText').textContent = '讀取中……';
+  try {
+    const r = await fetch('更新日誌.txt', { cache: 'no-store' });
+    if (!r.ok) throw 0;
+    const t = await r.text();
+    $('logText').innerHTML = esc(t).replace(/^(\d{4}-\d{2}-\d{2})$/gm, '<span class="logDate">$1</span>').replace(/【(v[\d.]+)/g, '【<span class="logVer">$1</span>');
+  } catch (e) {
+    $('logText').textContent = '讀不到更新日誌（直接打開檔案時讀不到，放到網站上就可以）。';
+  }
+}

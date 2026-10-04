@@ -446,6 +446,7 @@ function buildTurnPrompt(action, actMode) {
 【規則】
 - 用繁體中文、${cur.person}寫，寫小說的文字，不要寫成遊戲說明。
 - 只寫這一段發生的事。不替角色做作者沒交代的重大決定。
+- 動物（或其他生物）第一次出場時，要明確設定牠的體型：身長或肩高幾公分、體重幾公斤，寫在狀態區塊的「生物」那行。已經登記過的照登記的數字寫，不要改。
 - 要合理、有真實感。角色的狀態以下面的數字為準，不要自己改。
 - 故事寫完後，在最後附上狀態區塊，格式照抄，填這一段的變化：
 【狀態】
@@ -454,6 +455,7 @@ function buildTurnPrompt(action, actMode) {
 用掉：身上的東西被吃掉、喝掉、用掉、丟掉多少，寫「名稱 數量」，多樣用；分隔，沒有填 無（食物和水寫在這裡，網頁會自己算飢餓口渴，水用毫升）
 獲得：拿到的新東西，多樣用；分隔，每樣寫「名稱｜數量｜單位｜每單位重量公斤｜類型｜數值」。類型：食物（數值填每單位大卡）、飲水（數量用毫升，數值填 乾淨 或 不乾淨）、衣物（數值填保暖 下限～上限）、寢具（數值填 舒適度／保暖度）、工具、火源、燃料、光源、醫療、容器、無。例：野莓｜30｜顆｜0.003｜食物｜4。沒有填 無
 穿脫：換穿衣服時填，例「穿上 毛衣；脫下 薄外套」，沒有填 無
+生物：這段第一次出場的動物或生物，多隻用；分隔，每隻寫「名稱｜身長或肩高（公分）｜體重（公斤）｜簡短特徵」。例：灰狼｜肩高 80｜48｜瘦，左耳有缺口。已登記過的不用再寫，沒有填 無
 飢餓：只填身上物品以外吃到的（別人請的、當場摘來吃掉的），沒有填 0（滿是 ${r1(mx.hunger)}；參考：1 點約 67 大卡，一碗飯約 3、一頓正餐約 10、一整天的飯量約 36）
 口渴：只填身上物品以外喝到的，沒有填 0（滿是 ${r1(mx.thirst)}；參考：1 點約 40 毫升，一杯水約 6、一公升約 25、一整天的水量約 72）
 強度：這段主要的活動強度，輕、中、重、極重 選一個（輕＝坐著、手工、慢走；中＝趕路、搬東西；重＝鏟土、爬坡、扛重物；極重＝衝刺、打架）。網頁會照強度和耗時算體力
@@ -479,7 +481,7 @@ ${need('飢餓', c.hunger, mx.hunger)}、${need('口渴', c.thirst, mx.thirst)}
 ${c.groggyUntil > cur.clock ? '剛睡醒，還有點昏沉。\n' : ''}${c.dead ? '角色已經死亡。\n' : ''}
 【身上的東西】
 ${invForPrompt(c)}
-
+${creaturesForPrompt()}
 ${summary ? '【前情摘要】\n' + summary + '\n\n' : ''}【最近發生的事】
 ${recent || '（故事剛開始）'}
 
@@ -567,7 +569,7 @@ function closeModal(id) { $(id).classList.add('hidden'); }
 function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm(); bedOptions(); renderTurnItems(); openModal('turnModal'); }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal'].find(id => !$(id).classList.contains('hidden'));
+  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal'].find(id => !$(id).classList.contains('hidden'));
   if (open) closeModal(open);
 });
 
@@ -599,6 +601,7 @@ function readAIReply() {
   if (f['強度']) { const k = ['極重', '輕', '中', '重'].find(k => f['強度'].includes(k)); if (k) $('t_int').value = k; } set('血量', 't_hp');
   set('氣溫', 't_temp'); set('寢具', 't_bed'); set('被子', 't_cover');
   parseItemLines(f);
+  parseCreatures(f);
   refreshTurnForm();
   openTurn('已經照 AI 的回覆填好，檢查後按「套用」。');
   return true;

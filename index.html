@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title" onclick="showHome()">存活模擬 <span class="version">v0.0.4</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.5</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -248,6 +248,14 @@
     <label>背景與經歷<textarea id="e_background" rows="3"></textarea></label>
     <label>說話方式<textarea id="e_speech" rows="2"></textarea></label>
     <div class="row gap"><button onclick="saveEdit()">儲存</button><button class="ghost" onclick="closeModal('editModal')">取消</button></div>
+  </div>
+</div>
+
+<div id="logModal" class="modal hidden" onclick="if (event.target === this) closeModal('logModal')">
+  <div class="modalBox">
+    <h3>更新日誌</h3>
+    <div id="logText" class="logText"></div>
+    <div class="row gap"><button class="ghost" onclick="closeModal('logModal')">關閉</button></div>
   </div>
 </div>
 
