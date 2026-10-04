@@ -98,6 +98,15 @@ function addToInv(c, item) {
   else c.items.push(item);
 }
 function totalWeight(c) { return invOf(c).reduce((s, i) => s + i.w * i.qty, 0); }
+// 負重：身上所有東西（含穿著的）跟力量比
+const LOAD_NAMES = ['沒影響', '負重', '重度負重', '超過上限'];
+function loadInfo(c) {
+  const kg = totalWeight(c), str = c.attr.力量 || 10;
+  const free = str * RATES.loadFree, heavy = str * RATES.loadHeavy, max = str * RATES.loadMax;
+  const stage = kg > max ? 3 : kg > heavy ? 2 : kg > free ? 1 : 0;
+  return { kg, free, heavy, max, stage, name: LOAD_NAMES[stage], speedText: ['', '三分之二', '三分之一', ''][stage] };
+}
+const LOAD_TIP = '身上所有東西（含穿著的）加起來的重量，跟力量比：力量×2 公斤內沒影響；超過是負重，走路約平常三分之二的速度，用力時體力掉 1.25 倍；超過力量×4 是重度負重，約三分之一的速度，體力掉 1.5 倍，跟力量、敏捷、體質有關的動作都會吃虧；力量×6 是能帶的上限。';
 function fmtW(kg) { return kg < 1 ? `${Math.round(kg * 1000)} 克` : `${Math.round(kg * 10) / 10} 公斤`; }
 function fmtQty(i) { return `${r1(i.qty)} ${i.unit}`; }
 
@@ -130,7 +139,8 @@ function renderInv() {
   const c = cur.char;
   const list = invOf(c);
   const str = c.attr.力量;
-  $('invHead').innerHTML = `總重 ${fmtW(totalWeight(c))}　<span class="muted small" data-tip="負重（第二步會正式計算）：力量×2 公斤內沒影響，超過開始變慢，力量×4 起重度負重，力量×6 是上限。">負重參考：${r1(str * 2)}／${r1(str * 4)}／${r1(str * 6)} 公斤</span>`;
+  const ld = loadInfo(c);
+  $('invHead').innerHTML = `<span data-tip="${esc(LOAD_TIP)}">總重 ${fmtW(ld.kg)}・<span class="${ld.stage ? 'cond' : ''}">${ld.name}</span></span>　<span class="muted small">沒影響 ${r1(ld.free)}／重度 ${r1(ld.heavy)}／上限 ${r1(ld.max)} 公斤；能舉 ${r1(str * RATES.liftMult)}、拖 ${r1(str * RATES.dragMult)} 公斤</span>`;
   $('invList').innerHTML = list.length ? list.map(i => {
     const btns = [];
     if (i.t.食物) btns.push(`<button class="ghost small" onclick="queueUse('${i.id}')">吃</button>`);
@@ -152,7 +162,7 @@ function renderSideInv() {
   const food = list.filter(i => i.t.食物).reduce((s, i) => s + i.t.食物.kcal * i.qty, 0);
   const water = list.filter(i => i.t.飲水).reduce((s, i) => s + i.qty, 0);
   $('invCard').innerHTML = `<div class="row" style="justify-content:space-between"><span>物品</span><button class="ghost small" onclick="openInv()">打開</button></div>
-    <div class="small muted">共 ${list.length} 樣・${fmtW(totalWeight(c))}</div>
+    <div class="small ${loadInfo(c).stage ? 'cond' : 'muted'}" data-tip="${esc(LOAD_TIP)}">共 ${list.length} 樣・${fmtW(totalWeight(c))}／${r1(loadInfo(c).free)} 公斤・${loadInfo(c).name}</div>
     <div class="small muted" data-tip="身上所有食物的熱量加起來，和所有飲水的量。一般人一天約需 2400 大卡、3 公升水。">食物約 ${Math.round(food)} 大卡・水 ${Math.round(water)} 毫升</div>
     <div class="small muted">穿著：${worn.length ? esc(worn.join('、')) : '沒穿衣服'}</div>`;
 }
@@ -369,7 +379,7 @@ function invForPrompt(c) {
   const carry = list.filter(i => !i.worn).map(i => `${i.name} ${fmtQty(i)}${typeSummary(i) ? '（' + typeSummary(i) + '）' : ''}`);
   return `穿著：${worn.length ? worn.join('、') : '沒穿衣服'}（保暖 ${c.warmMin}～${c.warmMax}）
 帶著：${carry.length ? carry.join('、') : '無'}
-總重 ${fmtW(totalWeight(c))}`;
+總重 ${fmtW(totalWeight(c))}，${(ld => ld.stage === 0 ? `負重沒影響（力量×2＝${r1(ld.free)} 公斤以內）` : ld.stage === 3 ? `超過能帶的上限 ${r1(ld.max)} 公斤，背不動，要放下東西才能走` : `${ld.name}，走路約平常${ld.speedText}的速度，耗時照這個算${ld.stage === 2 ? '，跟力量、敏捷、體質有關的動作都會吃虧' : ''}`)(loadInfo(c))}`;
 }
 
 // 開新故事：起始穿著、隨身物品

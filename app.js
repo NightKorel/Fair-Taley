@@ -38,6 +38,11 @@ const RATES = {
   exertSleepBonus: 0.2,
   hotStaminaMult: 1.5,    // 熱到流汗時體力掉得快幾倍
   sleepComfortShift: 6,   // 舒適溫度以活動時為準，睡覺（靜止）時往上加幾度
+  // 負重（設計 2026-10-02，參考 DnD 第五版變體負重規則換成公斤；做 2026-10-04）
+  // 力量×2 公斤內沒影響；超過＝負重；超過×4＝重度負重；×6 是能帶的上限。拖＝×12，舉＝×5
+  loadFree: 2, loadHeavy: 4, loadMax: 6, dragMult: 12, liftMult: 5,
+  loadSpeed: [1, 2 / 3, 1 / 3, 0],      // 走路速度是平常的幾倍（DnD：負重 30→20 呎、重度 30→10 呎）
+  loadStamina: [1, 1.25, 1.5, 1.5],     // 用力時體力掉得快幾倍（暫定）
 };
 const FATIGUE_NAMES = ['清醒', '微倦', '疲倦', '疲憊', '恍惚'];
 const FATIGUE_STAMINA = [1, 1, 0.85, 0.6, 0.4];
@@ -292,7 +297,7 @@ function advance(minutes, opts = {}, c = cur.char, moveClock = true) {
     if (Math.abs(c.bodyTemp) >= RATES.tempDanger) c.hp -= RATES.tempHpPerHour * (1 + Math.abs(c.bodyTemp) - RATES.tempDanger) * h;
     if (opts.intensity) c.exert = (c.exert || 0) + (RATES.exertPerMin[opts.intensity] || 0) * dt;
     if (opts.sleep || opts.rest) c.stamina += mx.stamina * (dt / RATES.restFullMinutes);
-    else if (opts.intensity) c.stamina -= (RATES.intensity[opts.intensity] || 0) * (sweating ? RATES.hotStaminaMult : 1) * h;
+    else if (opts.intensity) c.stamina -= (RATES.intensity[opts.intensity] || 0) * (sweating ? RATES.hotStaminaMult : 1) * RATES.loadStamina[loadInfo(c).stage] * h;
     c.stamina = clamp(c.stamina, 0, maxes(c).stamina);
     if (c.hp <= 0) { c.hp = 0; c.dead = true; }
     if (moveClock) cur.clock += dt;
@@ -348,6 +353,8 @@ function renderStatus() {
   if (c.bodyTemp >= RATES.tempDanger) conds.push('中暑，正在扣血');
   if (c.groggyUntil > cur.clock) conds.push('剛睡醒昏沉（敏捷、感知小扣）');
   if (stage >= 3) conds.push('疲憊：感知、敏捷小扣');
+  const ld = loadInfo(c);
+  if (ld.stage) conds.push(ld.stage === 3 ? `背的東西超過上限（${r1(ld.kg)}／${r1(ld.max)} 公斤），走不動` : `${ld.name}：走路約平常${ld.speedText}的速度`);
   const st = RATES.fatigueStages;
   const tips = {
     hp: `身體的完整程度。受傷、流血、摔傷扣這條，扣光就死。上限＝體質×10。餓到見底、渴到見底、失溫或中暑時也會慢慢扣。`,
@@ -477,7 +484,7 @@ ${cur.world || '和現實一樣。'}${cur.startDate ? '\n故事開始的日期�
 ${loreForPrompt(action)}
 【角色】
 ${c.name}，${c.height} 公分，${c.weight} 公斤。
-力量 ${a.力量}、敏捷 ${a.敏捷}、體質 ${a.體質}、智力 ${a.智力}、感知 ${a.感知}、魅力 ${a.魅力}（一般人約 10）。
+力量 ${a.力量}、敏捷 ${a.敏捷}、體質 ${a.體質}、智力 ${a.智力}、感知 ${a.感知}、魅力 ${a.魅力}（一般人約 10）。能舉約 ${r1(a.力量 * RATES.liftMult)} 公斤，在地上拖約 ${r1(a.力量 * RATES.dragMult)} 公斤。
 ${c.personality ? '個性：\n' + c.personality + '\n' : ''}${c.background ? '背景：' + c.background + '\n' : ''}${c.speech ? '說話方式：' + c.speech : ''}
 ${othersForPrompt()}
 【現在】
