@@ -9,7 +9,7 @@ function remindAt() { return Math.max(keepRecent() + 2, cur.remindAt ?? 24); }
 // 研究（Wang 等 2023）：用「舊摘要＋新內容」寫出新摘要，長篇故事比較能前後一致。
 function sumFrom() { return cur.summaryUpTo || 0; }
 function unsummarized() { return Math.max(0, cur.log.length - sumFrom()); }
-function entryText(e) { return `${e.type === '故事' ? '' : '（' + e.type + '）'}${e.text}`; }
+function entryText(e) { return `${e.type === '故事' ? '' : '（' + (e.type === '角色' && e.who ? e.who : e.type) + '）'}${e.text}`; }
 
 function buildSummaryPrompt() {
   const end = Math.max(sumFrom(), cur.log.length - keepRecent());

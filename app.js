@@ -58,6 +58,17 @@ let undoStack = [];
 // ---------- 存取 ----------
 function load() {
   try { stories = JSON.parse(localStorage.getItem('survsim_stories') || '{}'); } catch (e) { stories = {}; }
+  Object.values(stories).forEach(linkChars);
+}
+// 多角色（2026-10-04）：存檔裡是 chars 陣列＋active（現在操作第幾個），cur.char 是現在操作那個角色的捷徑，不寫進存檔
+// 每個角色另外記 at（數字算到哪個時間）和 group（同一隊一起行動）
+function linkChars(s) {
+  if (!s) return s;
+  if (!s.chars) { s.chars = [s.char]; s.active = 0; }
+  delete s.char;
+  Object.defineProperty(s, 'char', { get() { return this.chars[this.active] || this.chars[0]; }, configurable: true, enumerable: false });
+  s.chars.forEach(c => { if (c.at == null) c.at = s.clock; if (!c.group) c.group = 'g1'; });
+  return s;
 }
 function save() {
   if (cur) { cur.updated = Date.now(); stories[cur.id] = cur; }
@@ -92,6 +103,7 @@ function showHome() {
   cur = null; renderStoryList(); showPage('home');
 }
 function showSetup() {
+  setSetupMode('story');
   $('s_world').value = ''; $('s_idea').value = ''; $('s_reply').value = ''; $('s_msg').textContent = '';
   showPage('setup');
 }
@@ -114,7 +126,8 @@ function fillWorld(i) { $('s_world').value = WORLD_EXAMPLES[i]; return false; }
 function copySetupPrompt() {
   const idea = $('s_idea').value.trim();
   if (!idea) { toast('先寫幾句大概的想法'); return; }
-  const p = `我要用「存活模擬」寫一篇小說，請幫我把下面的想法變成具體設定。要合理、有真實感。跟現實一樣的部分，世界觀寫大概的年代地點就好；跟現實不同的地方要寫清楚。
+  const forChar = setupMode === 'char';
+  let p = `我要用「存活模擬」寫一篇小說，請幫我把下面的想法變成具體設定。要合理、有真實感。跟現實一樣的部分，世界觀寫大概的年代地點就好；跟現實不同的地方要寫清楚。
 
 我的想法：
 ${idea}
@@ -140,6 +153,14 @@ ${idea}
 個性：（短的具體行為句，例「被逼急就開玩笑帶過」，用；分隔）
 背景：
 說話方式：`;
+  if (forChar) p = `我正在用「存活模擬」寫一篇小說，要加入一個新角色，請幫我把下面的想法變成具體設定。要合理、有真實感，符合這個世界。
+
+【世界觀】
+${cur.world || '和現實一樣。'}
+【已經有的角色】
+${cur.chars.map(c => c.name).join('、')}
+
+` + p.slice(p.indexOf('我的想法：')).split('\n').filter(l => !/^(故事名稱|世界觀|開始日期|開始時間|起點氣溫)：/.test(l)).join('\n');
   copyText(p, '貼給 AI，再把 AI 的回覆貼回「把 AI 的回覆貼在這裡」那格。');
 }
 
@@ -177,12 +198,12 @@ function applySetupReply() {
   $('s_msg').textContent = n ? `填好 ${n} 個欄位，請檢查一下。` : '讀不到格式，請確認 AI 有照格式回覆。';
 }
 
-function createStory() {
+// 照開新故事頁的角色欄位做出一個角色（開新故事、新增角色共用）
+function charFromForm() {
   const name = $('c_name').value.trim();
-  if (!name) { toast('角色至少要有名字'); return; }
+  if (!name) { toast('角色至少要有名字'); return null; }
   const v = id => num($(id).value);
   const con = v('c_con') || 10;
-  const [hh, mm] = ($('s_time').value || '06:00').split(':').map(Number);
   const max = r1(con * 10);
   const char = {
     name, height: v('c_height'), weight: v('c_weight'),
@@ -195,16 +216,24 @@ function createStory() {
     hp: max, hunger: max, thirst: max, stamina: max, fatigue: 0, bodyTemp: 0, groggyUntil: -1, dead: false,
   };
   setupItems(char);
-  cur = {
-    id: 's' + Date.now(), title: $('s_title').value.trim() || name + '的故事',
+  return char;
+}
+function finishSetup() { setupMode === 'char' ? addCharacter() : createStory(); }
+function createStory() {
+  const char = charFromForm();
+  if (!char) return;
+  const [hh, mm] = ($('s_time').value || '06:00').split(':').map(Number);
+  cur = linkChars({
+    id: 's' + Date.now(), title: $('s_title').value.trim() || char.name + '的故事',
     person: $('s_person').value, world: $('s_world').value.trim(), startDate: $('s_date').value.trim(),
-    clock: hh * 60 + mm, temp: v('s_temp'), char, log: [], created: Date.now(),
-  };
+    clock: hh * 60 + mm, temp: num($('s_temp').value), chars: [char], active: 0, log: [], created: Date.now(),
+  });
+  char.at = cur.clock; char.group = 'g1';
   addLog('系統', `故事開始。${clockText(cur.clock)}，氣溫 ${cur.temp} 度。`);
   save(); undoStack = []; enterPlay();
 }
 
-function openStory(id) { cur = stories[id]; migrateItems(cur.char); if (cur.char.fatigue > RATES.fatigueMax) cur.char.fatigue = RATES.fatigueMax; undoStack = []; enterPlay(); }
+function openStory(id) { cur = linkChars(stories[id]); cur.chars.forEach(c => { migrateItems(c); if (c.fatigue > RATES.fatigueMax) c.fatigue = RATES.fatigueMax; }); undoStack = []; enterPlay(); }
 function enterPlay() { showPage('play'); setMode('角色'); resetTurnForm(); renderAll(); }
 
 // ---------- 時間與計算 ----------
@@ -238,8 +267,8 @@ function warmthUsed(c, ambient, sleeping) {
 function feltTemp(c, ambient, sleeping) { return r1(ambient + warmthUsed(c, ambient, sleeping)); }
 
 // 把時間往前推 minutes 分鐘，opts.sleep：睡覺品質；opts.rest：休息
-function advance(minutes, opts = {}) {
-  const c = cur.char;
+// c：算哪個角色（預設現在操作的）；moveClock：要不要推時鐘（同行的角色跟著算時不推）
+function advance(minutes, opts = {}, c = cur.char, moveClock = true) {
   let left = minutes;
   while (left > 0 && !c.dead) {
     const dt = Math.min(10, left); left -= dt;
@@ -266,7 +295,7 @@ function advance(minutes, opts = {}) {
     else if (opts.intensity) c.stamina -= (RATES.intensity[opts.intensity] || 0) * (sweating ? RATES.hotStaminaMult : 1) * h;
     c.stamina = clamp(c.stamina, 0, maxes(c).stamina);
     if (c.hp <= 0) { c.hp = 0; c.dead = true; }
-    cur.clock += dt;
+    if (moveClock) cur.clock += dt;
   }
 }
 
@@ -282,7 +311,7 @@ function sleepQuality(c, bed) {
 }
 
 // ---------- 主畫面 ----------
-function renderAll() { renderStatus(); renderLog(); renderSideInv(); renderSumCard(); renderGoalCard(); renderLoreCard(); }
+function renderAll() { renderStatus(); renderLog(); renderSideInv(); renderSumCard(); renderGoalCard(); renderLoreCard(); renderCharPick(); }
 
 function bar(label, val, max, color, tip) {
   const pct = max > 0 ? clamp(val / max * 100, 0, 100) : 0;
@@ -345,7 +374,7 @@ function renderStatus() {
     ${conds.map(s => `<div class="cond">${s}</div>`).join('')}`;
   const a = c.attr;
   const at = k => `<span data-tip="${esc(k + '：' + ATTR_TIPS[k] + '一般人約 10，常人頂尖約 18。')}">${k} ${a[k]}</span>`;
-  $('charCard').innerHTML = `<span style="color:var(--accent)">${esc(c.name)}</span>　<span data-tip="身材另外記，跟屬性分開：屬性管有多強，身材管有多大。">${c.height} 公分・${c.weight} 公斤</span><br>
+  $('charCard').innerHTML = `<div class="row" style="justify-content:space-between"><span style="color:var(--accent)">${esc(c.name)}</span><button class="ghost small" onclick="openChars()" data-tip="新增角色、切換、一起行動或分開行動。">角色${cur.chars.length > 1 ? '（' + cur.chars.length + '）' : ''}</button></div>　<span data-tip="身材另外記，跟屬性分開：屬性管有多強，身材管有多大。">${c.height} 公分・${c.weight} 公斤</span><br>
     ${at('力量')}　${at('敏捷')}　${at('體質')}<br>${at('智力')}　${at('感知')}　${at('魅力')}<br>
     <span class="muted" data-tip="舒適溫度是沒穿衣服時覺得舒服的溫度，平常以活動時算，睡覺時靜止要再加 ${RATES.sleepComfortShift} 度。衣物保暖是身上整套衣服能抵多少度（下限～上限）。">舒適 ${c.comfortLow}～${c.comfortHigh} 度（睡覺 ${c.comfortLow + RATES.sleepComfortShift}～${c.comfortHigh + RATES.sleepComfortShift}）・衣物保暖 ${c.warmMin}～${c.warmMax}</span>`;
 }
@@ -399,10 +428,10 @@ function tempWord(t) {
   return '正常';
 }
 
-function addLog(type, text) { cur.log.push({ type, text, clock: cur.clock }); }
+function addLog(type, text) { const e = { type, text, clock: cur.clock }; if (type === '角色') e.who = cur.char.name; cur.log.push(e); }
 function renderLog() {
   const tags = { 角色: '角色行動', 作者: '作者', 故事: '', 系統: '' };
-  $('log').innerHTML = cur.log.map(e => `<div class="entry ${e.type}">${tags[e.type] ? `<span class="tag">${tags[e.type]}・${clockText(e.clock)}</span>` : ''}${esc(e.text)}</div>`).join('') || '<p class="muted small">故事還沒開始寫。</p>';
+  $('log').innerHTML = cur.log.map(e => `<div class="entry ${e.type}">${tags[e.type] ? `<span class="tag">${e.who && cur.chars.length > 1 ? e.who + '的' : ''}${tags[e.type]}・${clockText(e.clock)}</span>` : ''}${esc(e.text)}</div>`).join('') || '<p class="muted small">故事還沒開始寫。</p>';
   $('log').scrollTop = $('log').scrollHeight;
 }
 
@@ -411,6 +440,7 @@ function setMode(m) {
   $('m_char').classList.toggle('on', m === '角色');
   $('m_author').classList.toggle('on', m === '作者');
   $('modeHint').textContent = m === '角色' ? `以 ${cur ? cur.char.name : '角色'} 的身分行動` : '以作者身分寫一段或下指示';
+  if (cur) renderCharPick();
   $('input').placeholder = m === '角色' ? '角色這回合做什麼？例：沿著溪往下游走，邊走邊找能吃的東西。' : '作者寫一段文字，或指示接下來要發生什麼。';
 }
 
@@ -420,7 +450,7 @@ function pushUndo() {
 }
 function undoTurn() {
   if (!undoStack.length) { toast('沒有可以復原的'); return; }
-  cur = JSON.parse(undoStack.pop()); save(); renderAll(); toast('已復原');
+  cur = linkChars(JSON.parse(undoStack.pop())); save(); renderAll(); toast('已復原');
 }
 
 function recordOnly() {
@@ -449,7 +479,7 @@ ${loreForPrompt(action)}
 ${c.name}，${c.height} 公分，${c.weight} 公斤。
 力量 ${a.力量}、敏捷 ${a.敏捷}、體質 ${a.體質}、智力 ${a.智力}、感知 ${a.感知}、魅力 ${a.魅力}（一般人約 10）。
 ${c.personality ? '個性：\n' + c.personality + '\n' : ''}${c.background ? '背景：' + c.background + '\n' : ''}${c.speech ? '說話方式：' + c.speech : ''}
-
+${othersForPrompt()}
 【現在】
 ${clockText(cur.clock)}，氣溫 ${cur.temp} 度。
 ${need('飢餓', c.hunger, mx.hunger)}、${need('口渴', c.thirst, mx.thirst)}
@@ -473,6 +503,7 @@ function buildTurnPrompt(action, actMode) {
 - 只寫這一段發生的事。不替角色做作者沒交代的重大決定。
 - 動物（或其他生物）第一次出場時，要明確設定牠的體型：身長或肩高幾公分、體重幾公斤，寫在狀態區塊的「生物」那行。已經登記過的照登記的數字寫，不要改。
 - 要合理、有真實感。角色的狀態以下面的數字為準，不要自己改。
+- 狀態區塊只填【角色】這個人的變化。【同行的角色】跟著一起行動，網頁會照同樣的時間和強度算；他們這段吃喝或受傷時寫在「同行」那行。分開行動的角色這段不在場，不要寫到他們。
 - 照【世界觀】寫，不要自己加入世界觀沒有的東西。如果作者的指示或劇情讓這個世界出現世界觀不允許的事（例：原本是現實世界，卻出現魔法、超能力、現實沒有的生物或科技），照寫，並在狀態區塊的「顛覆」那行寫出來。
 - 【相關設定】裡登記過的人事物，照登記的內容寫，不要改。
 - 【目標】是角色現在想做到的事。情節照這個方向推，什麼事算阻礙也照這個判斷，但不要讓目標輕易達成，也不用每段都提。失敗是正常結果。期限照時間算，過了期限就照故事判斷算不算失敗。
@@ -493,6 +524,7 @@ function buildTurnPrompt(action, actMode) {
 氣溫：現在環境幾度（數字）
 寢具：睡覺才填，睡的地方舒適度 0～10（${BED_REF}；身上有睡墊、睡袋就照它的數值）
 被子：睡覺才填，蓋的東西能抵多少度，沒蓋填 0（${COVER_REF}；身上有毯子、睡袋就照它的數值）
+同行：有同行的角色才填，他們這段吃喝或受傷時寫「名字｜飢餓 數字｜口渴 數字｜血量 數字」，只寫有變化的項目，多人用；分隔，沒有填 無（數字的算法跟上面一樣）
 目標：這段有人交付角色一件事、或角色自己決定要做到某件事時才寫，多條用；分隔，每條寫「內容｜期限｜大目標」。期限寫從現在起多久（例：3 天、5 小時），沒有填 無；大目標是要掛在哪條進行中的目標底下，寫那條的內容，沒有填 無。例：找到能擋風的地方｜無｜活過冬天。沒有新目標填 無
 目標結果：進行中的目標這段完成、失敗或放棄了才寫，每條寫「內容｜完成」（或 失敗、放棄），多條用；分隔，沒有填 無
 設定：這段第一次出現、有名字、之後可能再出現的人事物才寫（地點、人物、組織、物品、規則、事件），多條用；分隔，每條寫「名稱｜類別｜關鍵字｜內容｜相關」。類別選 地點、人物、組織、物品、規則、事件；關鍵字寫名字和別稱，用、分隔，用專有名詞，不要用常見字；內容 3～5 句，只寫事實，名稱寫在內容裡，句子裡不要用；和｜；相關寫有關的其他設定名稱，用、分隔，沒有填 無。例：老周｜人物｜老周、周獵戶｜老周是住在北坡岩洞的老獵人，六十多歲，左腿跛。他熟悉山裡的路，不信任外人。｜北坡岩洞。已經登記的、路人、只出現一次的不寫，主角也不寫，沒有填 無
@@ -542,8 +574,9 @@ async function readClip() {
 }
 // 成對的貼上按鈕合成一顆（納可 2026-10-04）：先看回覆裡的標記分辨是哪一種，
 // 看不出來就照最後按的複製按鈕，再看不出來才問玩家
-const REPLY_KINDS = { turn: '這回合的故事', check: '檢查結果', summary: '劇情摘要', chapter: '章節摘要' };
+const REPLY_KINDS = { turn: '這回合的故事', check: '檢查結果', summary: '劇情摘要', chapter: '章節摘要', catchup: '補算' };
 function detectKind(t) {
+  if (/[【\[]\s*補算\s*[】\]]/.test(t)) return 'catchup';
   if (/[【\[]\s*問題\s*[】\]]/.test(t)) return 'check';
   if (/[【\[]\s*(章名|章節摘要)\s*[】\]]/.test(t)) return 'chapter';
   if (/[【\[]\s*摘要\s*[】\]]/.test(t)) return 'summary';
@@ -568,6 +601,7 @@ function routeReply(t, kind) {
   if (kind === 'check') pasteCheck(t);
   else if (kind === 'summary') pasteSummary(t);
   else if (kind === 'chapter') pasteChapter(t);
+  else if (kind === 'catchup') pasteCatchup(t);
   else finishTurnText(t);
 }
 function pickKind(kind) { closeModal('kindModal'); const t = kindPending; kindPending = ''; if (t) routeReply(t, kind); }
@@ -626,7 +660,7 @@ function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm()
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('svModal').classList.contains('hidden')) return; // 顛覆世界觀一定要選一個
-  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal', 'goalModal', 'kindModal', 'loreModal'].find(id => !$(id).classList.contains('hidden'));
+  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal', 'goalModal', 'kindModal', 'loreModal', 'charsModal', 'catchModal'].find(id => !$(id).classList.contains('hidden'));
   if (open) closeModal(open);
 });
 
@@ -661,6 +695,7 @@ function readAIReply() {
   parseCreatures(f);
   parseGoals(f);
   parseLore(f);
+  parseCompanions(f);
   refreshTurnForm();
   openTurn('已經照 AI 的回覆填好，檢查後按「套用」。');
   if (checkSubvert(f)) return false;
@@ -690,7 +725,9 @@ function subject() {
 function applyTurn() {
   const c = cur.char;
   if (c.dead) { toast('角色已經死亡'); return; }
+  if (behind(c)) { toast(`${c.name}跟大家分開了一段時間，要先補算`); openCatchup(); return; }
   pushUndo();
+  const mates = party();
   const before = { stage: fatigueStage(c), temp: tempWord(c.bodyTemp), hunger: c.hunger > 0, thirst: c.thirst > 0 };
   const type = $('t_type').value;
   const who = subject();
@@ -732,6 +769,7 @@ function applyTurn() {
     let woken = false;
     if (!isNaN(wake) && wake > 0 && wake < hours) { hours = wake; woken = true; }
     advance(Math.round(hours * 60), { sleep: q });
+    mates.forEach(m => { advance(Math.round(hours * 60), { sleep: sleepQuality(m, bed) }, m, false); m.exert = 0; });
     if (c.groggyUntil === -2) c.groggyUntil = cur.clock + RATES.groggyMinutes;
     else if (c.groggyUntil === -3) c.groggyUntil = cur.clock + RATES.wakeGroggyMinutes;
     sleepCover = 0;
@@ -748,6 +786,7 @@ function applyTurn() {
       const inten = $('t_int').value;
       const wasUp = c.stamina > 0;
       advance(Math.round(min), { rest: type === '休息', intensity: type === '一般' ? inten : null });
+      mates.forEach(m => advance(Math.round(min), { rest: type === '休息', intensity: type === '一般' ? inten : null }, m, false));
       lines.unshift(type === '休息' ? `${who}休息了 ${durText(min)}。` : `過了 ${durText(min)}（${inten}度活動）。`);
       if (type === '一般' && wasUp && c.stamina <= 0) lines.push(`${who}的體力耗盡了，得停下來休息。`);
     }
@@ -761,6 +800,8 @@ function applyTurn() {
   if (before.hunger && c.hunger <= 0) lines.push(`${who}餓到極限了，身體開始受損。`);
   if (before.thirst && c.thirst <= 0) lines.push(`${who}渴到極限了，身體開始受損。`);
   if (c.dead) lines.push(`${who}死了。`);
+  lines.push(...applyCompanions(mates));
+  c.at = cur.clock; mates.forEach(m => m.at = cur.clock);
 
   addLog('系統', lines.join('') || '沒有變化。');
   save(); resetTurnForm(); renderAll();
@@ -781,7 +822,8 @@ function importSave(ev) {
   file.text().then(t => {
     try {
       const s = JSON.parse(t);
-      if (!s.id || !s.char) throw 0;
+      if (!s.id || !(s.char || s.chars)) throw 0;
+      linkChars(s);
       if (stories[s.id] && !confirm('已經有同一個故事，要用匯入的覆蓋嗎？')) return;
       stories[s.id] = s; cur = null; save(); renderStoryList(); toast('匯入完成');
     } catch (e) { toast('這個檔案讀不懂'); }

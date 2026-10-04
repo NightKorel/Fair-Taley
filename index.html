@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>存活模擬</title>
-<link rel="stylesheet" href="style.css?v=0.0.18">
+<link rel="stylesheet" href="style.css?v=0.0.19">
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.18</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.19</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -33,7 +33,8 @@
 
 <!-- 開新故事 -->
 <main id="setup" class="page hidden">
-  <section class="card">
+  <h2 id="setupHead" class="hidden">新增角色</h2>
+  <section class="card" id="setupStoryCard">
     <h2>開新故事</h2>
     <div class="grid2">
       <label>故事名稱<input id="s_title" placeholder="例：北坡的冬天"></label>
@@ -54,7 +55,7 @@
     <div class="row gap wrap"><button onclick="pasteSetup()">一鍵貼上並填入</button><button class="ghost" onclick="applySetupReply()">讀取 AI 回覆，填入欄位</button><span id="s_msg" class="small"></span></div>
   </section>
 
-  <section class="card">
+  <section class="card" id="setupWorldCard">
     <h3>世界觀</h3>
     <p class="small muted">自由填寫。跟現實一樣的部分，寫大概哪個年代、哪裡就好。範例：
       <a href="#" onclick="return fillWorld(0)">現代都市</a>、
@@ -98,9 +99,10 @@
     <label>說話方式<textarea id="c_speech" rows="2" placeholder="例：話很少，習慣用「嗯」回答"></textarea></label>
   </section>
 
+  <div id="s_togetherRow" class="hidden"><label class="chip"><input type="checkbox" id="s_together" checked> 和現在操作的角色一起行動</label></div>
   <div class="row gap">
-    <button onclick="createStory()">開始故事</button>
-    <button class="ghost" onclick="showHome()">取消</button>
+    <button id="setupGo" onclick="finishSetup()">開始故事</button>
+    <button class="ghost" onclick="cancelSetup()">取消</button>
   </div>
 </main>
 
@@ -136,6 +138,7 @@
             <button id="m_char" onclick="setMode('角色')">角色</button>
             <button id="m_author" onclick="setMode('作者')">作者</button>
           </div>
+          <select id="charPick" class="hidden" style="width:auto;margin:0" onchange="setActive(this.value)" data-tip="換成操作哪個角色。分開行動的角色切過去時，要先補算分開的那段時間。"></select>
           <span class="small muted" id="modeHint"></span>
         </div>
         <textarea id="input" rows="3"></textarea>
@@ -366,6 +369,39 @@
   </div>
 </div>
 
+<div id="charsModal" class="modal hidden" onclick="if (event.target === this) closeModal('charsModal')">
+  <div class="modalBox">
+    <h3>角色</h3>
+    <p class="small muted">可以有好幾個能操作的角色。一起行動的角色會照同樣的時間和強度一起算；分開行動的角色數字會停下來，切過去時要補算分開的那段時間（交給 AI 總結，或自己填）。時鐘只有一個，只往前走。</p>
+    <div id="charsList"></div>
+    <div class="row gap"><button onclick="showAddChar()">新增角色</button><button class="ghost" onclick="closeModal('charsModal')">關閉</button></div>
+  </div>
+</div>
+
+<div id="catchModal" class="modal hidden">
+  <div class="modalBox">
+    <h3>補算分開的這段時間</h3>
+    <p class="small" id="cuHead"></p>
+    <p class="small muted">交給 AI：寫建議（可以空白）→ 複製提示詞 → AI 回完按「貼上 AI 回覆」，下面會自動填好。不用 AI 就自己填。網頁照這些和經過的時間大概算。</p>
+    <label data-tip="想讓他這段時間做什麼，寫給 AI 參考。例：他在鎮上打零工換了點糧食。">給 AI 的建議（可以空白）<textarea id="cu_hint" rows="2"></textarea></label>
+    <div class="row gap wrap"><button class="ghost" onclick="copyCatchupPrompt()">複製補算提示詞</button><button class="ghost" onclick="pasteAI()">貼上 AI 回覆</button></div>
+    <label>這段時間發生的事（會記進故事）<textarea id="cu_summary" rows="3"></textarea></label>
+    <div class="grid4">
+      <label data-tip="這段一共睡了幾小時。預設照一天睡 8 小時估。">睡了幾小時<input id="cu_sleep" type="number" step="0.5" min="0"></label>
+      <label data-tip="地面 1、草堆 3、睡袋 5、普通床 7、好床 9。">寢具舒適度<input id="cu_bed" type="number" step="0.5"></label>
+      <label>醒著時的強度<select id="cu_int"><option>輕</option><option>中</option><option>重</option><option>極重</option></select></label>
+      <label>血量（受傷填負數）<input id="cu_hp" type="number"></label>
+      <label data-tip="身上物品以外吃到的。1 點約 67 大卡，一頓正餐約 10。">飢餓（另外吃到的）<input id="cu_hunger" type="number"></label>
+      <label data-tip="身上物品以外喝到的。1 點約 40 毫升，一杯水約 6。">口渴（另外喝到的）<input id="cu_thirst" type="number"></label>
+    </div>
+    <div class="grid2">
+      <label data-tip="一行一樣，寫「名稱 數量」，水用毫升。身上的食物和水會自動算飢渴。">用掉身上的東西<textarea id="cu_use" rows="2"></textarea></label>
+      <label data-tip="一行一樣，寫「名稱 數量」。能配對預設物品的會自動帶入數值。">拿到的東西<textarea id="cu_gain" rows="2"></textarea></label>
+    </div>
+    <div class="row gap"><button onclick="applyCatchup()">套用補算</button><button class="ghost" onclick="closeModal('catchModal')">先不補</button></div>
+  </div>
+</div>
+
 <div id="kindModal" class="modal hidden" onclick="if (event.target === this) closeModal('kindModal')">
   <div class="modalBox">
     <h3>這是哪一種回覆？</h3>
@@ -375,6 +411,7 @@
       <button class="ghost" onclick="pickKind('check')">檢查結果</button>
       <button class="ghost" onclick="pickKind('summary')">劇情摘要</button>
       <button class="ghost" onclick="pickKind('chapter')">章節摘要</button>
+      <button class="ghost" onclick="pickKind('catchup')">補算</button>
       <button class="ghost" onclick="closeModal('kindModal')">取消</button>
     </div>
   </div>
@@ -399,10 +436,11 @@
 <div id="tip" class="tip hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=0.0.18"></script>
-<script src="items.js?v=0.0.18"></script>
-<script src="story.js?v=0.0.18"></script>
-<script src="goals.js?v=0.0.18"></script>
-<script src="lore.js?v=0.0.18"></script>
+<script src="app.js?v=0.0.19"></script>
+<script src="items.js?v=0.0.19"></script>
+<script src="story.js?v=0.0.19"></script>
+<script src="goals.js?v=0.0.19"></script>
+<script src="lore.js?v=0.0.19"></script>
+<script src="chars.js?v=0.0.19"></script>
 </body>
 </html>
