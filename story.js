@@ -196,7 +196,7 @@ async function openChangelog() {
       const body = esc(m[2]).split(/(?<=。)/).map(x => x.trim()).filter(Boolean).map(x => `<div>${x}</div>`).join('');
       html.push(`<div class="logEntry"><div class="logTitle">${title}</div>${body}</div>`);
     }
-    $('logText').innerHTML = html.join('') || esc(t);
+    $('logText').innerHTML = html.join('') || `<div style="white-space:pre-wrap">${esc(t)}</div>`;
   } catch (e) {
     $('logText').textContent = '讀不到更新日誌（直接打開檔案時讀不到，放到網站上就可以）。';
   }
