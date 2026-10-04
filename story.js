@@ -212,6 +212,7 @@ function buildCheckPrompt() {
 - 不合常理：搬不動的東西被輕鬆搬走、花的時間不合理、生物的體型或行為不合理、違反世界觀。
 - 身上的東西：漏記、多記、數量不對。
 - 寫法：AI 替角色做了作者沒交代的重大決定。
+- 還沒有故事的話，就檢查角色設定、世界觀、身上的東西彼此合不合理（例：年代沒有的東西、穿著跟氣溫差太多）。
 
 請用繁體中文，完全照下面的格式回覆：
 【問題】
@@ -225,9 +226,13 @@ function buildCheckPrompt() {
 ${storyContext()}`;
 }
 function copyCheckPrompt() {
-  if (!cur.log.some(e => e.type === '故事')) { toast('還沒有 AI 寫的故事可以檢查'); return; }
-  copyText(buildCheckPrompt(), '貼給 AI，複製 AI 的整段回覆後回來按「貼上檢查結果」。');
-  waitingFor = 'check';
+  // 隨時都能檢查：還沒有故事時，就只檢查角色、世界觀、身上東西合不合理
+  try {
+    copyText(buildCheckPrompt(), '貼給 AI，複製 AI 的整段回覆後回來按「貼上檢查結果」。');
+    waitingFor = 'check';
+  } catch (e) {
+    toast('做檢查提示詞時出錯：' + e.message);
+  }
 }
 let checkResult = null;
 function sectionOf(t, name) {
