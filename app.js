@@ -879,6 +879,21 @@ function importSave(ev) {
   ev.target.value = '';
 }
 
+// ---------- 加到手機主畫面（PWA） ----------
+// Android 的 Chrome 會給「可以安裝」的通知，就顯示按鈕直接裝；iPhone 只能照說明從 Safari 的分享選單加。
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('installBtn').classList.remove('hidden'); });
+async function installApp() {
+  if (!installEvt) return;
+  installEvt.prompt();
+  const r = await installEvt.userChoice.catch(() => null);
+  if (r && r.outcome === 'accepted') { toast('加好了，主畫面上會出現營火圖示'); $('installBtn').classList.add('hidden'); }
+  installEvt = null;
+}
+window.addEventListener('appinstalled', () => { $('installCard').classList.add('hidden'); });
+if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) $('installCard').classList.add('hidden'); // 已經從主畫面打開就不用再提
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
 // ---------- 開始 ----------
 try { if (localStorage.getItem('survsim_theme') === 'beige') document.documentElement.dataset.theme = 'beige'; } catch (e) {}
 load();

@@ -4,11 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>存活模擬</title>
-<link rel="stylesheet" href="style.css?v=0.0.25">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="theme-color" content="#16181c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="存活模擬">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="style.css?v=0.0.26">
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.25</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.26</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -28,6 +36,14 @@
   <section class="card muted small">
     <p>這是拿來寫小說的生存框架。網頁負責記住、計算、檢查：時間、飢渴、疲勞、冷熱、睡眠；AI（或你自己）負責判斷和描述。</p>
     <p>存檔放在這個瀏覽器裡。換電腦或清瀏覽器資料前，記得先匯出備份。</p>
+  </section>
+  <section class="card small" id="installCard">
+    <div class="row gap wrap" style="justify-content:space-between">
+      <b style="font-weight:600">加到手機主畫面</b>
+      <button id="installBtn" class="hidden" onclick="installApp()">加到主畫面</button>
+    </div>
+    <p class="muted" id="installHint">加到主畫面之後，點圖示就像 App 一樣全螢幕打開，沒網路也能玩。<br>iPhone：用 Safari 打開這個網址，按下面的「分享」→「加入主畫面」。<br>Android：用 Chrome 打開，按右上角「⋮」→「加到主畫面」或「安裝應用程式」。</p>
+    <p class="muted">注意：iPhone 上從主畫面打開的存檔，跟 Safari 裡的存檔是分開的。要把故事搬過去，先在 Safari「匯出存檔」，再到主畫面那邊「匯入存檔」。</p>
   </section>
 </main>
 
@@ -471,12 +487,12 @@
 <div id="tip" class="tip hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=0.0.25"></script>
-<script src="items.js?v=0.0.25"></script>
-<script src="story.js?v=0.0.25"></script>
-<script src="goals.js?v=0.0.25"></script>
-<script src="lore.js?v=0.0.25"></script>
-<script src="chars.js?v=0.0.25"></script>
-<script src="ills.js?v=0.0.25"></script>
+<script src="app.js?v=0.0.26"></script>
+<script src="items.js?v=0.0.26"></script>
+<script src="story.js?v=0.0.26"></script>
+<script src="goals.js?v=0.0.26"></script>
+<script src="lore.js?v=0.0.26"></script>
+<script src="chars.js?v=0.0.26"></script>
+<script src="ills.js?v=0.0.26"></script>
 </body>
 </html>

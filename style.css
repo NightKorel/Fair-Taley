@@ -42,7 +42,7 @@ body {
   font-size: 15px;
   line-height: 1.7;
 }
-.hidden { display: none !important; }
+.hidden, [hidden] { display: none !important; }
 .small { font-size: 13px; }
 .muted { color: var(--muted); }
 h1, h2, h3 { margin: 0 0 8px; font-weight: 600; }
