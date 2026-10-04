@@ -103,7 +103,7 @@
 </main>
 
 <!-- 主畫面 -->
-<main id="play" class="page hidden">
+<main id="play" class="page wide hidden">
   <div class="layout">
     <aside class="side">
       <section class="card">
@@ -145,9 +145,12 @@
         </details>
       </section>
 
+    </section>
+
+    <section class="turnCol">
       <section class="card">
         <h3>回合表</h3>
-        <p class="small muted">這回合發生的事。用 AI 時會自動填好，你看過可以改；不用 AI 時自己填。填好按「套用」，網頁才會推進時間、計算狀態。</p>
+        <p class="small muted">用 AI 時自動填好；不用 AI 時自己填。按「套用」才會推進時間、計算狀態。</p>
         <div class="grid4">
           <label>類型
             <select id="t_type" onchange="refreshTurnForm()">
