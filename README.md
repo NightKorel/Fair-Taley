@@ -3,7 +3,7 @@
 這個 repo 的 main（GitHub Pages）拿來做 AI 驅動的自由文字遊戲：預設手動複製提示詞給 AI，不一定要接 API。遊戲名稱「存活模擬」，定位是寫小說的生存框架。第一版網頁已上線（GitHub Pages 首頁），設計見 `設計文件/核心設計.md`。
 
 ## 檔案
-- `index.html`、`style.css`、`app.js` — 遊戲網頁本體（第一版）。暫定數字都集中在 `app.js` 最上面的 RATES。
+- `index.html`、`style.css`、`app.js`、`items.js`、`story.js` — 遊戲網頁本體。暫定數字都集中在 `app.js` 最上面的 RATES；物品在 `items.js`；劇情摘要、章節、生物、AI 檢查在 `story.js`。
 - `設計文件/研究_AI角色與記憶.txt` — 上網查的資料整理，還沒拍板。
 - `設計文件/核心設計.md` — 新專案已拍板的設計（檔尾「討論中」是還沒定的）。
 - `設計文件/點子庫.txt` — 想到但還沒用上的點子，都還沒拍板。
