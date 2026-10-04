@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title" onclick="showHome()">存活模擬 <span class="version">v0.0.1</span></h1>
+  <h1 id="title" onclick="showHome()">存活模擬 <span class="version">v0.0.2</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -135,21 +135,28 @@
         <div class="row gap wrap">
           <button onclick="copyTurnPrompt()">複製提示詞給 AI</button>
           <button onclick="pasteAndFinish()">一鍵貼上並完成</button>
+          <button class="ghost" onclick="openModal('pasteModal')">手動貼上回覆</button>
           <button class="ghost" onclick="recordOnly()">只記錄（不用 AI）</button>
+          <button class="ghost" onclick="openTurn('')">回合表</button>
         </div>
-        <details id="pasteBox">
-          <summary>貼上 AI 回覆</summary>
-          <textarea id="aiReply" rows="6" placeholder="把 AI 的整段回覆貼在這裡"></textarea>
-          <button class="ghost" onclick="readAIReply()">讀取回覆</button>
-          <span id="aiMsg" class="small"></span>
-        </details>
       </section>
 
     </section>
+  </div>
+</main>
 
-    <section class="turnCol">
-      <section class="card">
+<div id="pasteModal" class="modal hidden" onclick="if (event.target === this) closeModal('pasteModal')">
+  <div class="modalBox">
+    <h3>貼上 AI 回覆</h3>
+    <textarea id="aiReply" rows="12" placeholder="把 AI 的整段回覆貼在這裡"></textarea>
+    <div class="row gap"><button onclick="readAIReply()">讀取回覆</button><button class="ghost" onclick="closeModal('pasteModal')">關閉</button></div>
+  </div>
+</div>
+
+<div id="turnModal" class="modal hidden" onclick="if (event.target === this) closeModal('turnModal')">
+  <div class="modalBox">
         <h3>回合表</h3>
+        <p class="small" id="turnMsg"></p>
         <p class="small muted">用 AI 時自動填好；不用 AI 時自己填。按「套用」才會推進時間、計算狀態。指著欄位名稱（手機長按）可以看說明。</p>
         <div class="grid4">
           <label>類型
@@ -176,13 +183,11 @@
           <label>衣物保暖上限<input id="t_wmax" type="number" step="0.5"></label>
         </div>
         <p class="small muted t_sleep">睡多久由網頁算，角色沒辦法自己決定。</p>
-        <div class="row gap"><button onclick="applyTurn()">套用</button><button class="ghost" onclick="resetTurnForm()">清空</button></div>
-      </section>
-    </section>
+        <div class="row gap"><button onclick="applyTurn()">套用</button><button class="ghost" onclick="resetTurnForm()">清空</button><button class="ghost" onclick="closeModal('turnModal')">關閉</button></div>
   </div>
-</main>
+</div>
 
-<div id="promptModal" class="modal hidden">
+<div id="promptModal" class="modal hidden" onclick="if (event.target === this) closeModal('promptModal')">
   <div class="modalBox">
     <h3>提示詞</h3>
     <p class="small muted" id="promptHint"></p>

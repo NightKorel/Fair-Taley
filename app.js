@@ -426,7 +426,7 @@ function recordOnly() {
   const text = $('input').value.trim();
   if (!text) { toast('先寫點什麼'); return; }
   pushUndo(); addLog(mode, text); $('input').value = ''; save(); renderLog();
-  toast('記下了，記得在回合表填這回合發生什麼');
+  openTurn('記下了。填這回合發生了什麼，再按「套用」。');
 }
 
 // ---------- AI 提示詞 ----------
@@ -485,8 +485,7 @@ function copyTurnPrompt() {
   if (!text) { toast('先寫這回合要做什麼'); return; }
   const p = buildTurnPrompt(text, mode);
   pushUndo(); addLog(mode, text); $('input').value = ''; save(); renderLog();
-  copyText(p, '貼給 AI，再把 AI 的整段回覆貼回「貼上 AI 回覆」，按讀取。');
-  $('pasteBox').open = true;
+  copyText(p, '貼給 AI，複製 AI 的整段回覆後回來按「一鍵貼上並完成」。');
 }
 
 // 提示詞視窗：跳出來時自動複製；自動複製失敗就提示按按鈕再試
@@ -519,14 +518,14 @@ async function readClip() {
 async function pasteAndFinish() {
   hideClipBanner();
   const t = await readClip();
-  if (t === null) { toast('瀏覽器不讓網頁讀剪貼簿，請手動貼上'); $('pasteBox').open = true; return; }
+  if (t === null) { toast('瀏覽器不讓網頁讀剪貼簿，請手動貼上'); openModal('pasteModal'); return; }
   if (!t.trim() || t === lastPrompt) { toast('剪貼簿裡還沒有 AI 的回覆'); return; }
   if (t === lastPasted) { toast('這段回覆已經用過了'); return; }
   lastPasted = t;
   $('aiReply').value = t;
   waitingFor = null;
   if (readAIReply()) { applyTurn(); toast('已貼上並完成這回合'); }
-  else { $('pasteBox').open = true; toast('故事記下了，但狀態區塊要手動填'); }
+
 }
 async function pasteSetup() {
   hideClipBanner();
@@ -555,7 +554,15 @@ window.addEventListener('focus', checkClipboard);
 document.addEventListener('visibilitychange', checkClipboard);
 
 function copyAgain() { tryCopy($('promptText').value); }
-function closePrompt() { $('promptModal').classList.add('hidden'); }
+function closePrompt() { closeModal('promptModal'); }
+function openModal(id) { $(id).classList.remove('hidden'); }
+function closeModal(id) { $(id).classList.add('hidden'); }
+function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm(); openModal('turnModal'); }
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const open = ['promptModal', 'pasteModal', 'turnModal'].find(id => !$(id).classList.contains('hidden'));
+  if (open) closeModal(open);
+});
 
 function readAIReply() {
   const raw = $('aiReply').value.trim();
@@ -571,7 +578,8 @@ function readAIReply() {
   if (story) addLog('故事', story);
   save(); renderLog();
   $('aiReply').value = '';
-  if (!block) { $('aiMsg').textContent = '讀到故事，但找不到狀態區塊，請在回合表手動填。'; return false; }
+  closeModal('pasteModal');
+  if (!block) { resetTurnForm(); openTurn('故事記下了，但找不到狀態區塊，請手動填這回合發生了什麼。'); return false; }
   const f = parseLines(block);
   resetTurnForm();
   if (f['類型']) { const t = ['睡覺', '休息', '一般'].find(k => f['類型'].includes(k)); if (t) $('t_type').value = t; }
@@ -584,7 +592,7 @@ function readAIReply() {
   if (f['強度']) { const k = ['極重', '輕', '中', '重'].find(k => f['強度'].includes(k)); if (k) $('t_int').value = k; } set('血量', 't_hp');
   set('氣溫', 't_temp'); set('寢具', 't_bed'); set('被子', 't_cover');
   refreshTurnForm();
-  $('aiMsg').textContent = '已填入回合表，檢查後按「套用」。';
+  openTurn('已經照 AI 的回覆填好，檢查後按「套用」。');
   return true;
 }
 
@@ -686,7 +694,7 @@ function applyTurn() {
 
   addLog('系統', lines.join('') || '沒有變化。');
   save(); resetTurnForm(); renderAll();
-  $('aiMsg').textContent = '';
+  closeModal('turnModal');
 }
 
 // ---------- 匯出匯入 ----------

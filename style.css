@@ -27,6 +27,13 @@
 }
 
 * { box-sizing: border-box; }
+/* 捲軸：細、跟主題同色 */
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+*::-webkit-scrollbar-corner { background: transparent; }
 html, body { margin: 0; }
 body {
   background: var(--bg);
@@ -86,26 +93,16 @@ button:hover, .button:hover { filter: brightness(1.1); }
 .grid6 { grid-template-columns: repeat(6, 1fr); }
 
 .page.wide { max-width: 1600px; padding: 12px 16px; }
-/* 電腦：三欄，整頁塞進一個畫面，故事紀錄自己捲動 */
+/* 電腦：兩欄，整頁塞進一個畫面，故事紀錄自己捲動；回合表、貼上回覆都是彈出視窗 */
 .layout {
-  display: grid; grid-template-columns: 250px minmax(0, 1fr) 330px; gap: 12px;
+  display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 12px;
   height: calc(100vh - 92px);
 }
-.side, .turnCol { overflow-y: auto; min-height: 0; }
+.side { overflow-y: auto; min-height: 0; }
 .mainCol { display: flex; flex-direction: column; min-height: 0; }
 .mainCol .log { flex: 1; min-height: 0; max-height: none; }
 .layout .card { padding: 10px 12px; margin-bottom: 10px; }
-.turnCol .grid4 { grid-template-columns: repeat(2, 1fr); }
-.turnCol label { margin-bottom: 4px; }
-.turnCol input, .turnCol select { padding: 4px 6px; }
 .side .stat { margin-bottom: 6px; }
-/* 中等寬度：兩欄，回合表放到故事下面 */
-@media (max-width: 1150px) {
-  .layout { grid-template-columns: 250px minmax(0, 1fr); height: auto; }
-  .turnCol { grid-column: 2; overflow: visible; }
-  .turnCol .grid4 { grid-template-columns: repeat(4, 1fr); }
-  .mainCol .log { max-height: 55vh; min-height: 200px; }
-}
 .clock { font-size: 22px; font-weight: 600; }
 
 /* 故事列表 */
@@ -175,8 +172,7 @@ label[data-tip], .stat[data-tip] { cursor: default; }
 
 @media (max-width: 760px) {
   .layout { grid-template-columns: 1fr; height: auto; }
-  .turnCol { grid-column: auto; }
-  .turnCol .grid4 { grid-template-columns: repeat(2, 1fr); }
+  .mainCol .log { max-height: 55vh; min-height: 200px; }
   .grid3, .grid4 { grid-template-columns: repeat(2, 1fr); }
   .grid6 { grid-template-columns: repeat(3, 1fr); }
   .log { max-height: 50vh; }
