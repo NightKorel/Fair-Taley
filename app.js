@@ -455,6 +455,7 @@ function buildTurnPrompt(action, actMode) {
 用掉：身上的東西被吃掉、喝掉、用掉、丟掉多少，寫「名稱 數量」，多樣用；分隔，沒有填 無（食物和水寫在這裡，網頁會自己算飢餓口渴，水用毫升）
 獲得：拿到的新東西，多樣用；分隔，每樣寫「名稱｜數量｜單位｜每單位重量公斤｜類型｜數值」。類型：食物（數值填每單位大卡）、飲水（數量用毫升，數值填 乾淨 或 不乾淨）、衣物（數值填保暖 下限～上限）、寢具（數值填 舒適度／保暖度）、工具、火源、燃料、光源、醫療、容器、無。例：野莓｜30｜顆｜0.003｜食物｜4。沒有填 無
 穿脫：換穿衣服時填，例「穿上 毛衣；脫下 薄外套」，沒有填 無
+離場：已登記的生物這段死了、走遠了、被吃掉、不會再回來的，寫牠的名稱，多隻用；分隔，沒有填 無
 生物：這段第一次出場的動物或生物，多隻用；分隔，每隻寫「名稱｜身長或肩高（公分）｜體重（公斤）｜簡短特徵」。例：灰狼｜肩高 80｜48｜瘦，左耳有缺口。已登記過的不用再寫，沒有填 無
 飢餓：只填身上物品以外吃到的（別人請的、當場摘來吃掉的），沒有填 0（滿是 ${r1(mx.hunger)}；參考：1 點約 67 大卡，一碗飯約 3、一頓正餐約 10、一整天的飯量約 36）
 口渴：只填身上物品以外喝到的，沒有填 0（滿是 ${r1(mx.thirst)}；參考：1 點約 40 毫升，一杯水約 6、一公升約 25、一整天的水量約 72）
@@ -569,7 +570,7 @@ function closeModal(id) { $(id).classList.add('hidden'); }
 function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm(); bedOptions(); renderTurnItems(); openModal('turnModal'); }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal'].find(id => !$(id).classList.contains('hidden'));
+  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal'].find(id => !$(id).classList.contains('hidden'));
   if (open) closeModal(open);
 });
 
@@ -584,7 +585,7 @@ function readAIReply() {
   }
   story = story.replace(/\*\*/g, '').trim();
   pushUndo();
-  if (story) addLog('故事', story);
+  if (story) { addLog('故事', story); trackCreatures(story); }
   save(); renderLog();
   $('aiReply').value = '';
   closeModal('pasteModal');

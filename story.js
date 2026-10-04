@@ -72,6 +72,7 @@ function renderSumCard() {
   const n = unsummarized();
   const warn = n >= SUMMARY_SUGGEST_AT;
   $('sumCard').innerHTML = `<div class="row" style="justify-content:space-between"><span>劇情摘要</span><button class="ghost small" onclick="openSummary()">打開</button></div>
+    <div class="small muted">出場生物 ${activeCreatures().length} 隻<a href="#" onclick="openCreatures();return false" style="margin-left:8px">查看</a></div>
     <div class="small ${warn ? 'cond' : 'muted'}" data-tip="提示詞只附摘要和最近幾段原文。故事變長時把舊段落歸納進摘要，AI 才記得前面的事，提示詞也不會越來越長。">${cur.summary ? '' : '還沒有摘要。'}${n} 段還沒歸納${warn ? '，建議歸納了' : ''}</div>`;
 }
 // 給回合提示詞用：摘要＋摘要之後的段落（最多 10 段）
@@ -117,22 +118,64 @@ function saveEdit() {
 }
 
 // ---------- 出場的生物：AI 要明確設定體型（納可 2026-10-04） ----------
+// 什麼時候收起來（不再附進提示詞）：
+// 1. AI 在狀態區塊「離場」寫了牠（死了、走遠了、被吃掉……）
+// 2. 連續 CREATURE_IDLE 段故事（AI 寫的故事段落）都沒提到牠
+// 收起來的還留著體型紀錄，之後故事又提到牠就自動拿回來，體型照舊。玩家也可以手動刪除。
+const CREATURE_IDLE = 15;
+function storyCount() { return cur.log.filter(e => e.type === '故事').length; }
+function creatureList() { if (!cur.creatures) cur.creatures = []; return cur.creatures; }
+function activeCreatures() { return creatureList().filter(c => !c.gone); }
 function parseCreatures(f) {
   const v = f['生物'];
-  if (!v || /^(無|沒有)$/.test(v.trim())) return;
-  if (!cur.creatures) cur.creatures = [];
-  v.split(/[；;]/).map(x => x.trim()).filter(Boolean).forEach(e => {
-    const p = e.split(/[｜|]/).map(x => x.trim());
-    if (!p[0] || /^(無|沒有)$/.test(p[0])) return;
-    const size = p[1] || '', kg = num(p[2], NaN), note = p[3] || '';
-    if (cur.creatures.some(c => c.name === p[0])) return;
-    cur.creatures.push({ name: p[0], size, kg: isNaN(kg) ? null : kg, note });
-    addLog('系統', `登記生物：${p[0]}（${size ? size + (/公分|cm/.test(size) ? '' : ' 公分') : '體型未寫'}${isNaN(kg) ? '' : '，' + kg + ' 公斤'}）${note ? '，' + note : ''}。`);
-  });
+  if (v && !/^(無|沒有)$/.test(v.trim())) {
+    v.split(/[；;]/).map(x => x.trim()).filter(Boolean).forEach(e => {
+      const p = e.split(/[｜|]/).map(x => x.trim());
+      if (!p[0] || /^(無|沒有)$/.test(p[0])) return;
+      const old = creatureList().find(c => c.name === p[0]);
+      if (old) { old.gone = false; old.seen = storyCount(); return; }
+      const size = p[1] || '', kg = num(p[2], NaN), note = p[3] || '';
+      cur.creatures.push({ name: p[0], size, kg: isNaN(kg) ? null : kg, note, seen: storyCount(), gone: false });
+      addLog('系統', `登記生物：${p[0]}（${size ? size + (/公分|cm/.test(size) ? '' : ' 公分') : '體型未寫'}${isNaN(kg) ? '' : '，' + kg + ' 公斤'}）${note ? '，' + note : ''}。`);
+    });
+  }
+  const out = f['離場'];
+  if (out && !/^(無|沒有)$/.test(out.trim())) {
+    out.split(/[；;]/).map(x => x.trim()).filter(Boolean).forEach(e => {
+      const c = creatureList().find(c => !c.gone && e.includes(c.name));
+      if (c) { c.gone = true; addLog('系統', `${c.name}離場了，之後不再附進提示詞（再出現會自動拿回來）。`); }
+    });
+  }
+}
+// 每段故事進來時呼叫：提到的生物更新「最後出現」，太久沒提到的收起來，收起來的又被提到就拿回來
+function trackCreatures(text) {
+  if (!cur || !cur.creatures) return;
+  for (const c of cur.creatures) {
+    if (text.includes(c.name)) {
+      if (c.gone) { c.gone = false; addLog('系統', `${c.name}又出現了，體型照之前登記的。`); }
+      c.seen = storyCount();
+    } else if (!c.gone && storyCount() - (c.seen || 0) > CREATURE_IDLE) {
+      c.gone = true;
+    }
+  }
 }
 function creaturesForPrompt() {
-  if (!cur.creatures || !cur.creatures.length) return '';
-  return `\n【出場過的生物】（體型照這裡寫）\n${cur.creatures.map(c => `${c.name}：${c.size}${/公分|cm/.test(c.size) ? '' : ' 公分'}，${c.kg ?? '?'} 公斤${c.note ? '，' + c.note : ''}`).join('\n')}\n`;
+  const list = activeCreatures();
+  if (!list.length) return '';
+  return `\n【出場過的生物】（體型照這裡寫）\n${list.map(c => `${c.name}：${c.size}${/公分|cm/.test(c.size) ? '' : ' 公分'}，${c.kg ?? '?'} 公斤${c.note ? '，' + c.note : ''}`).join('\n')}\n`;
+}
+function openCreatures() {
+  const list = creatureList();
+  const row = (c, k) => `<div class="invRow"><div><span>${esc(c.name)}</span>${c.gone ? '<span class="muted small">　已收起</span>' : ''}<div class="muted small">${esc(c.size)}${/公分|cm/.test(c.size) ? '' : ' 公分'}，${c.kg ?? '?'} 公斤${c.note ? '，' + esc(c.note) : ''}</div></div>
+    <div class="invBtns"><button class="ghost small" onclick="toggleCreature(${k})">${c.gone ? '拿回來' : '收起來'}</button><button class="ghost small" onclick="deleteCreature(${k})">刪除</button></div></div>`;
+  $('crList').innerHTML = list.length ? list.map(row).join('') : '<p class="muted small">還沒有登記任何生物。</p>';
+  openModal('crModal');
+}
+function toggleCreature(k) { const c = creatureList()[k]; c.gone = !c.gone; if (!c.gone) c.seen = storyCount(); save(); openCreatures(); renderSumCard(); }
+function deleteCreature(k) {
+  const c = creatureList()[k];
+  if (!confirm(`刪除「${c.name}」的紀錄？刪了之後再出現，AI 會重新設定體型。`)) return;
+  cur.creatures.splice(k, 1); save(); openCreatures(); renderSumCard();
 }
 
 // ---------- 按版本號看更新日誌 ----------

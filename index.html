@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.5</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.6</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -256,6 +256,15 @@
     <h3>更新日誌</h3>
     <div id="logText" class="logText"></div>
     <div class="row gap"><button class="ghost" onclick="closeModal('logModal')">關閉</button></div>
+  </div>
+</div>
+
+<div id="crModal" class="modal hidden" onclick="if (event.target === this) closeModal('crModal')">
+  <div class="modalBox">
+    <h3>出場過的生物</h3>
+    <p class="small muted">收起來的不會附進提示詞，但體型紀錄還在，故事再提到牠會自動拿回來。AI 寫「離場」、或連續 15 段沒提到，會自動收起來。</p>
+    <div id="crList"></div>
+    <div class="row gap"><button class="ghost" onclick="closeModal('crModal')">關閉</button></div>
   </div>
 </div>
 
