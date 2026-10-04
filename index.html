@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>存活模擬</title>
-<link rel="stylesheet" href="style.css?v=0.0.22">
+<link rel="stylesheet" href="style.css?v=0.0.23">
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.22</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.23</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -246,6 +246,11 @@
       <button class="ghost" onclick="finishChapterManual()" data-tip="不用 AI：把上面框裡的摘要直接當成這一章的章節摘要。">自己寫好，直接換章</button>
     </div>
     <div id="chList"></div>
+    <h3 style="margin-top:12px">大章節</h3>
+    <p class="small muted" id="arcInfo"></p>
+    <p class="small muted">比章節大的一段故事。AI 會提「怎樣算完成」，達成時跳窗問你要封存、當結局，還是繼續寫下一個大章節。條件可以自己改；清空的話 AI 會再提一個。</p>
+    <label>完成條件<input id="arcGoal" placeholder="例：阿青活過第一個冬天"></label>
+    <div class="row gap wrap"><button class="ghost" onclick="saveArcGoal()">儲存條件</button><button class="ghost" onclick="openArcDone()" data-tip="不用等 AI 判斷，自己決定這個大章節完成了。">這個大章節完成了</button></div>
   </div>
 </div>
 
@@ -417,6 +422,20 @@
   </div>
 </div>
 
+<div id="arcModal" class="modal hidden">
+  <div class="modalBox">
+    <h3>大章節完成了</h3>
+    <p class="small" id="arcDoneText" style="white-space:pre-line"></p>
+    <p class="small muted">接下來要怎麼做？封存或當成結局之後，都還能再打開。</p>
+    <div class="row gap wrap">
+      <button onclick="finishArc('next')" data-tip="這個大章節記下來，接著寫下一個大章節，AI 會提新的完成條件。">直接往下寫</button>
+      <button class="ghost" onclick="finishArc('archive')" data-tip="收進首頁的「封存的故事」，之後可以拿出來繼續。">封存這個故事</button>
+      <button class="ghost" onclick="finishArc('end')" data-tip="把這裡當成結局。故事列表會標「結局」，還是可以打開來看或繼續寫。">當成結局</button>
+      <button class="ghost" onclick="finishArc('no')">還沒完成</button>
+    </div>
+  </div>
+</div>
+
 <div id="kindModal" class="modal hidden" onclick="if (event.target === this) closeModal('kindModal')">
   <div class="modalBox">
     <h3>這是哪一種回覆？</h3>
@@ -451,12 +470,12 @@
 <div id="tip" class="tip hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=0.0.22"></script>
-<script src="items.js?v=0.0.22"></script>
-<script src="story.js?v=0.0.22"></script>
-<script src="goals.js?v=0.0.22"></script>
-<script src="lore.js?v=0.0.22"></script>
-<script src="chars.js?v=0.0.22"></script>
-<script src="ills.js?v=0.0.22"></script>
+<script src="app.js?v=0.0.23"></script>
+<script src="items.js?v=0.0.23"></script>
+<script src="story.js?v=0.0.23"></script>
+<script src="goals.js?v=0.0.23"></script>
+<script src="lore.js?v=0.0.23"></script>
+<script src="chars.js?v=0.0.23"></script>
+<script src="ills.js?v=0.0.23"></script>
 </body>
 </html>

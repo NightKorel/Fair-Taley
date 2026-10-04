@@ -113,12 +113,15 @@ function showSetup() {
   showPage('setup');
 }
 function renderStoryList() {
-  const list = Object.values(stories).sort((a, b) => (b.updated || 0) - (a.updated || 0));
-  $('storyList').innerHTML = list.length ? list.map(s => `
+  const all = Object.values(stories).sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  const item = s => `
     <div class="storyItem">
-      <span class="name" onclick="openStory('${s.id}')">${esc(s.title)}　<span class="small muted">${esc(s.char.name)}・${clockText(s.clock)}</span></span>
-      <button class="ghost small" onclick="deleteStory('${s.id}')">刪除</button>
-    </div>`).join('') : '<p class="muted small">還沒有故事。</p>';
+      <span class="name" onclick="${s.archived ? 'unarchive' : 'openStory'}('${s.id}')">${esc(s.title)}${s.ended ? '<span class="tagPill">結局</span>' : ''}　<span class="small muted">${esc(s.char.name)}・${clockText(s.clock)}</span></span>
+      <span>${s.archived ? `<button class="ghost small" onclick="unarchive('${s.id}')">拿出來繼續</button>` : ''}<button class="ghost small" onclick="deleteStory('${s.id}')">刪除</button></span>
+    </div>`;
+  const live = all.filter(s => !s.archived), arch = all.filter(s => s.archived);
+  $('storyList').innerHTML = (live.length ? live.map(item).join('') : '<p class="muted small">還沒有故事。</p>') +
+    (arch.length ? `<details><summary>封存的故事（${arch.length}）</summary>${arch.map(item).join('')}</details>` : '');
 }
 function deleteStory(id) {
   if (!confirm(`確定刪除「${stories[id].title}」？刪了就救不回來，建議先匯出備份。`)) return;
@@ -497,7 +500,7 @@ ${need('飢餓', c.hunger, mx.hunger)}、${need('口渴', c.thirst, mx.thirst)}
 ${illsForPrompt(c)}${c.groggyUntil > cur.clock ? '剛睡醒，還有點昏沉。\n' : ''}${c.dead ? '角色已經死亡。\n' : ''}
 【身上的東西】
 ${invForPrompt(c)}
-${creaturesForPrompt()}${goalsForPrompt()}
+${creaturesForPrompt()}${goalsForPrompt()}${arcForPrompt()}
 ${chaptersForPrompt() ? '【前面的章節】\n' + chaptersForPrompt() + '\n\n' : ''}${summary ? '【本章前情摘要】\n' + summary + '\n\n' : ''}【最近發生的事】
 ${recent || '（故事剛開始）'}`;
 }
@@ -517,6 +520,7 @@ function buildTurnPrompt(action, actMode) {
 - 照【世界觀】寫，不要自己加入世界觀沒有的東西。如果作者的指示或劇情讓這個世界出現世界觀不允許的事（例：原本是現實世界，卻出現魔法、超能力、現實沒有的生物或科技），照寫，並在狀態區塊的「顛覆」那行寫出來。
 - 角色喝了不乾淨的水、吃了壞掉的東西、傷口沒處理、淋雨受凍太久時，照常理判斷會不會生病，生病寫在狀態區塊的「生病」那行。生病的影響網頁會算，你照【現在】寫的病況描述。
 - 【相關設定】裡登記過的人事物，照登記的內容寫，不要改。
+- 【大章節】是比較大的一段故事。完成條件達成時（照故事判斷，不要為了完成硬寫），在狀態區塊的「大章節完成」寫 是。
 - 【目標】是角色現在想做到的事。情節照這個方向推，什麼事算阻礙也照這個判斷，但不要讓目標輕易達成，也不用每段都提。失敗是正常結果。期限照時間算，過了期限就照故事判斷算不算失敗。
 - 故事寫完後，在最後附上狀態區塊，格式照抄，填這一段的變化：
 【狀態】
@@ -543,6 +547,8 @@ function buildTurnPrompt(action, actMode) {
 目標：這段有人交付角色一件事、或角色自己決定要做到某件事時才寫，多條用；分隔，每條寫「內容｜期限｜大目標」。期限寫從現在起多久（例：3 天、5 小時），沒有填 無；大目標是要掛在哪條進行中的目標底下，寫那條的內容，沒有填 無。例：找到能擋風的地方｜無｜活過冬天。沒有新目標填 無
 目標結果：進行中的目標這段完成、失敗或放棄了才寫，每條寫「內容｜完成」（或 失敗、放棄），多條用；分隔，沒有填 無
 設定：這段第一次出現、有名字、之後可能再出現的人事物才寫（地點、人物、組織、物品、規則、事件），多條用；分隔，每條寫「名稱｜類別｜關鍵字｜內容｜相關」。類別選 地點、人物、組織、物品、規則、事件；關鍵字寫名字和別稱，用、分隔，用專有名詞，不要用常見字；內容 3～5 句，只寫事實，名稱寫在內容裡，句子裡不要用；和｜；相關寫有關的其他設定名稱，用、分隔，沒有填 無。例：老周｜人物｜老周、周獵戶｜老周是住在北坡岩洞的老獵人，六十多歲，左腿跛。他熟悉山裡的路，不信任外人。｜北坡岩洞。已經登記的、路人、只出現一次的不寫，主角也不寫，沒有填 無
+大章節：【大章節】還沒有完成條件時才寫，用一句話寫怎樣算完成這個大章節（例：阿青活過第一個冬天、找到失蹤的弟弟），已經有了填 無
+大章節完成：這段達成了大章節的完成條件才寫「是，原因」，沒有填 無
 顛覆：這段出現了世界觀不允許的事，就寫一句要加進世界觀的話，說明這個世界多了什麼（例：這個世界有人能用意念移動小東西）；世界觀裡已經寫了的不算，沒有填 無
 【狀態結束】
 
@@ -675,7 +681,7 @@ function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm()
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('svModal').classList.contains('hidden')) return; // 顛覆世界觀一定要選一個
-  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal', 'goalModal', 'kindModal', 'loreModal', 'charsModal', 'catchModal', 'illModal'].find(id => !$(id).classList.contains('hidden'));
+  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal', 'goalModal', 'kindModal', 'loreModal', 'charsModal', 'catchModal', 'illModal', 'arcModal'].find(id => !$(id).classList.contains('hidden'));
   if (open) closeModal(open);
 });
 
@@ -712,6 +718,7 @@ function readAIReply() {
   parseLore(f);
   parseCompanions(f);
   parseIlls(f);
+  parseArc(f);
   refreshTurnForm();
   openTurn('已經照 AI 的回覆填好，檢查後按「套用」。');
   if (checkSubvert(f)) return false;
@@ -824,6 +831,7 @@ function applyTurn() {
   save(); resetTurnForm(); renderAll();
   closeModal('turnModal');
   afterTurnLore();
+  afterTurnArc();
 }
 
 // ---------- 匯出匯入 ----------

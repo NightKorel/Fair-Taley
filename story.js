@@ -33,6 +33,7 @@ ${fresh || '（沒有）'}` };
 
 function openSummary() {
   $('sumText').value = cur.summary || '';
+  $('arcGoal').value = arcNow().goal || ''; $('arcInfo').textContent = `現在是第 ${arcs().length + 1} 個大章節。`;
   $('sumKeep').value = keepRecent(); $('sumRemind').value = remindAt();
   $('sumInfo').textContent = `第 ${chapters().length + 1} 章。已歸納到第 ${sumFrom()} 段，還有 ${unsummarized()} 段沒歸納（最近 ${keepRecent()} 段會保留原文）。`;
   renderChapters();
@@ -84,7 +85,7 @@ function renderSumCard() {
   const warn = n > remindAt();
   $('sumCard').innerHTML = `<div class="row" style="justify-content:space-between"><span>劇情摘要</span><button class="ghost small" onclick="openSummary()">打開</button></div>
     <div class="small muted">出場生物 ${activeCreatures().length} 隻<a href="#" onclick="openCreatures();return false" style="margin-left:8px">查看</a></div>
-    <div class="small ${warn ? 'cond' : 'muted'}" data-tip="提示詞只附摘要和最近幾段原文。故事變長時把舊段落歸納進摘要，AI 才記得前面的事，提示詞也不會越來越長。">第 ${chapters().length + 1} 章・${cur.summary ? '' : '還沒有摘要・'}${n} 段還沒歸納${warn ? '，建議歸納了' : ''}</div>`;
+    <div class="small ${warn ? 'cond' : 'muted'}" data-tip="提示詞只附摘要和最近幾段原文。故事變長時把舊段落歸納進摘要，AI 才記得前面的事，提示詞也不會越來越長。">第 ${arcs().length + 1} 個大章節・第 ${chapters().length + 1} 章・${cur.summary ? '' : '還沒有摘要・'}${n} 段還沒歸納${warn ? '，建議歸納了' : ''}</div>`;
 }
 // 給回合提示詞用：前面章節摘要＋本章摘要＋摘要之後的段落（最多 10 段，或玩家設的保留段數）
 function storySoFar() {
@@ -383,7 +384,7 @@ function confirmSubvert() {
   else toast('已寫進世界觀，檢查回合表後按「套用」');
 }
 function rejectSubvert() {
-  subvertPending = null; loreNew = false;
+  subvertPending = null; loreNew = false; arcPending = false;
   closeModal('svModal'); closeModal('turnModal');
   undoTurn(); // 回到 AI 這段故事進來之前
   const last = cur.log[cur.log.length - 1];
@@ -394,4 +395,50 @@ function rejectSubvert() {
   }
   resetTurnForm(); save(); renderAll();
   toast('撤回這段了，行動放回輸入框，可以改了再問一次');
+}
+
+// ---------- 大章節與封存（設計 2026-10-03，做 2026-10-04） ----------
+// 故事不用強制結束。AI 設定「怎樣算完成這個大章節」，完成與否也交給 AI 判斷（作者也能自己按）。
+// 完成時玩家選：封存這個故事（之後可以拿出來繼續）、當成結局、直接往下寫（開始下一個大章節）。
+function arcs() { if (!cur.arcs) cur.arcs = []; return cur.arcs; }
+function arcNow() { if (!cur.arc) cur.arc = { goal: '', since: cur.clock }; return cur.arc; }
+function arcForPrompt() {
+  const a = arcNow(), n = arcs().length + 1;
+  return a.goal ? `\n【大章節】第 ${n} 個大章節，完成條件：${a.goal}\n` : `\n【大章節】第 ${n} 個大章節還沒有完成條件。請照目前故事的方向，在狀態區塊的「大章節」寫一個。\n`;
+}
+let arcPending = false; // AI 說完成了，套用回合後跳窗問玩家
+function parseArc(f) {
+  const v = (f['大章節'] || '').trim();
+  if (v && !/^(無|沒有)$/.test(v) && !arcNow().goal) { arcNow().goal = v; addLog('系統', `大章節的完成條件：${v}`); }
+  const d = (f['大章節完成'] || '').trim();
+  if (d && /^是/.test(d) && arcNow().goal) { arcPending = true; arcNow().why = d.replace(/^是[，,、：:\s]*/, ''); }
+}
+function afterTurnArc() { if (!arcPending) return; arcPending = false; openArcDone(); }
+function openArcDone() {
+  const a = arcNow();
+  $('arcDoneText').textContent = `第 ${arcs().length + 1} 個大章節${a.goal ? '的完成條件：' + a.goal : ''}${a.why ? '\nAI 的判斷：' + a.why : ''}`;
+  openModal('arcModal');
+}
+function finishArc(choice) {
+  if (choice === 'no') { delete arcNow().why; closeModal('arcModal'); toast('繼續這個大章節'); return; }
+  pushUndo();
+  const a = arcNow(), n = arcs().length + 1;
+  arcs().push({ goal: a.goal, since: a.since, ended: cur.clock, result: choice === 'end' ? '結局' : '完成' });
+  cur.arc = { goal: '', since: cur.clock };
+  addLog('系統', `第 ${n} 個大章節完成${a.goal ? '：' + a.goal : ''}。${choice === 'end' ? '故事在這裡結束。' : choice === 'archive' ? '故事封存起來了。' : '接著寫下一個大章節。'}`);
+  if (choice === 'end') cur.ended = true;
+  if (choice === 'archive') cur.archived = true;
+  save(); closeModal('arcModal'); closeModal('sumModal');
+  if (choice === 'next') { renderAll(); toast(`開始第 ${n + 1} 個大章節，AI 會提新的完成條件`); return; }
+  showHome(); toast(choice === 'end' ? '故事完結了，還是可以打開來看或繼續寫' : '故事封存了，在首頁「封存的故事」可以拿出來繼續');
+}
+function saveArcGoal() {
+  const v = $('arcGoal').value.trim();
+  if (v === (arcNow().goal || '')) { toast('沒有變動'); return; }
+  pushUndo(); arcNow().goal = v; addLog('系統', v ? `作者把大章節的完成條件改成：${v}` : '作者清掉了大章節的完成條件，AI 會再提一個。'); save(); renderLog(); toast('已儲存');
+}
+function unarchive(id) {
+  const s = stories[id]; delete s.archived; s.updated = Date.now();
+  try { localStorage.setItem('survsim_stories', JSON.stringify(stories)); } catch (e) {}
+  openStory(id); toast('拿出來了，接著寫吧');
 }
