@@ -342,7 +342,7 @@ function applyTurnItems(who) {
     if (q <= 0) continue;
     i.qty = r1(i.qty - q);
     if (i.t.食物) {
-      const pts = i.t.食物.kcal * q / KCAL_PER_HUNGER;
+      const pts = i.t.食物.kcal * q / KCAL_PER_HUNGER * illMods(c).food; // 拉肚子時吃下去補得少
       c.hunger = clamp(c.hunger + pts, 0, mx.hunger);
       lines.push(`${who}吃了${i.name} ${r1(q)} ${i.unit}，飢餓恢復了 ${r1(pts)}。`);
     } else if (i.t.飲水) {

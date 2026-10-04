@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>存活模擬</title>
-<link rel="stylesheet" href="style.css?v=0.0.21">
+<link rel="stylesheet" href="style.css?v=0.0.22">
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.21</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.22</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -402,6 +402,21 @@
   </div>
 </div>
 
+<div id="illModal" class="modal hidden" onclick="if (event.target === this) closeModal('illModal')">
+  <div class="modalBox">
+    <h3>疾病</h3>
+    <p class="small" id="illHead"></p>
+    <p class="small muted">生病大多不直接扣血，而是讓別的條變差：感冒容易累、拉肚子容易渴、發燒會覺得冷。時間到自然會好，有治療好得快一些；傷口感染不會自己好，拖 3 天沒治療會開始慢慢扣血。平常由 AI 判斷什麼時候生病，也可以在這裡自己記。</p>
+    <div id="illList"></div>
+    <div class="row gap wrap" style="margin-top:8px">
+      <select id="illKind" style="width:auto"></select>
+      <input id="illName" placeholder="病名（可以空白）" style="width:160px">
+      <button class="ghost" onclick="addIllManual()">記下生病</button>
+    </div>
+    <div class="row gap"><button class="ghost" onclick="closeModal('illModal')">關閉</button></div>
+  </div>
+</div>
+
 <div id="kindModal" class="modal hidden" onclick="if (event.target === this) closeModal('kindModal')">
   <div class="modalBox">
     <h3>這是哪一種回覆？</h3>
@@ -436,11 +451,12 @@
 <div id="tip" class="tip hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=0.0.21"></script>
-<script src="items.js?v=0.0.21"></script>
-<script src="story.js?v=0.0.21"></script>
-<script src="goals.js?v=0.0.21"></script>
-<script src="lore.js?v=0.0.21"></script>
-<script src="chars.js?v=0.0.21"></script>
+<script src="app.js?v=0.0.22"></script>
+<script src="items.js?v=0.0.22"></script>
+<script src="story.js?v=0.0.22"></script>
+<script src="goals.js?v=0.0.22"></script>
+<script src="lore.js?v=0.0.22"></script>
+<script src="chars.js?v=0.0.22"></script>
+<script src="ills.js?v=0.0.22"></script>
 </body>
 </html>

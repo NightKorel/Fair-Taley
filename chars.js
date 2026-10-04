@@ -19,7 +19,7 @@ function othersForPrompt() {
   const brief = m => {
     const mx = maxes(m), a = m.attr;
     return `${m.name}：${m.height} 公分，${m.weight} 公斤；力量 ${a.力量}、敏捷 ${a.敏捷}、體質 ${a.體質}、智力 ${a.智力}、感知 ${a.感知}、魅力 ${a.魅力}。${m.personality ? '個性：' + m.personality.split(/\r?\n/).filter(Boolean).join('；') + '。' : ''}${m.speech ? '說話方式：' + m.speech + '。' : ''}
-  現在：${needWord('飢餓', m.hunger, mx.hunger)}、${needWord('口渴', m.thirst, mx.thirst)}，血量 ${r1(m.hp)}／${r1(mx.hp)}，疲勞：${FATIGUE_NAMES[fatigueStage(m)]}，冷熱：${tempWord(m.bodyTemp)}${m.dead ? '，已經死亡' : ''}。`;
+  現在：${ills(m).length ? '生病：' + ills(m).map(i => i.name).join('、') + '，' : ''}${needWord('飢餓', m.hunger, mx.hunger)}、${needWord('口渴', m.thirst, mx.thirst)}，血量 ${r1(m.hp)}／${r1(mx.hp)}，疲勞：${FATIGUE_NAMES[fatigueStage(m)]}，冷熱：${tempWord(m.bodyTemp)}${m.dead ? '，已經死亡' : ''}。`;
   };
   return `${mates.length ? '\n【同行的角色】（跟著一起行動）\n' + mates.map(brief).join('\n') + '\n' : ''}${apart.length ? '\n【分開行動的角色】（這段不在場）\n' + apart.map(m => m.name + (m.dead ? '（已經死亡）' : '')).join('、') + '\n' : ''}`;
 }
@@ -235,10 +235,12 @@ function applyCatchup() {
   if (sleepMin > 0 && !c.dead) { const q = sleepQuality(c, bed); advance(sleepMin, { sleep: q }, c, true); c.exert = 0; }
   cur.clock = now;
   c.at = now;
+  const healed = updateIlls(c);
   lines.unshift(`補算${who}分開的 ${durText(gap)}：醒著 ${durText(gap - sleepMin)}（${inten}度活動）${sleepMin ? '、睡了 ' + durText(sleepMin) : '、沒睡'}。`);
   if (dh) lines.push(`另外吃到東西，飢餓 ${dh > 0 ? '+' : ''}${r1(dh)}。`);
   if (dt) lines.push(`另外喝到水，口渴 ${dt > 0 ? '+' : ''}${r1(dt)}。`);
   if (dhp) lines.push(dhp < 0 ? `受了傷，血量 ${r1(dhp)}。` : `血量恢復 ${r1(dhp)}。`);
+  lines.push(...healed);
   if (c.dead) lines.push(`${who}沒撐過這段時間。`);
   addLog('系統', lines.join(''));
   save(); renderAll(); closeModal('catchModal');

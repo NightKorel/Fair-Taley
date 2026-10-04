@@ -254,12 +254,12 @@ function durText(min) {
 function maxes(c) {
   const base = r1(c.attr.體質 * 10);
   const stage = fatigueStage(c);
-  return { hp: base, hunger: base, thirst: base, stamina: r1(base * FATIGUE_STAMINA[stage]) };
+  return { hp: base, hunger: base, thirst: base, stamina: r1(base * FATIGUE_STAMINA[stage] * illMods(c).stamina) };
 }
 function fatigueStage(c) { return RATES.fatigueStages.filter(t => c.fatigue >= t).length; }
 // 舒適範圍：平常以活動時為準，睡覺時是靜止，往上移
 function comfort(c, sleeping) {
-  const d = sleeping ? RATES.sleepComfortShift : 0;
+  const d = (sleeping ? RATES.sleepComfortShift : 0) + illMods(c).comfort; // 發燒時舒適溫度往上移
   return [c.comfortLow + d, c.comfortHigh + d];
 }
 let sleepCover = 0; // 睡覺時蓋的被子、毯子保暖度，只在睡覺時加上去
@@ -278,14 +278,15 @@ function advance(minutes, opts = {}, c = cur.char, moveClock = true) {
   while (left > 0 && !c.dead) {
     const dt = Math.min(10, left); left -= dt;
     const h = dt / 60;
-    const mx = maxes(c);
+    const mx = maxes(c), ill = illMods(c);
     c.hunger = Math.max(0, c.hunger - RATES.hungerPerHour * h);
     const sweating = feltTemp(c, cur.temp, !!opts.sleep) > comfort(c, !!opts.sleep)[1];
-    c.thirst = Math.max(0, c.thirst - RATES.thirstPerHour * (sweating ? RATES.hotThirstMult : 1) * h);
+    c.thirst = Math.max(0, c.thirst - RATES.thirstPerHour * (sweating ? RATES.hotThirstMult : 1) * ill.thirst * h);
+    if (ill.hp) c.hp -= ill.hp * h; // 重病拖太久才扣血
     if (c.hunger <= 0) c.hp -= RATES.starveHpPerHour * h;
     if (c.thirst <= 0) c.hp -= RATES.dehydrateHpPerHour * h;
     if (opts.sleep) c.fatigue = Math.max(0, c.fatigue - RATES.fatigueSleepPerHour * opts.sleep * h);
-    else c.fatigue = Math.min(RATES.fatigueMax, c.fatigue + RATES.fatigueAwakePerHour * h);
+    else c.fatigue = Math.min(RATES.fatigueMax, c.fatigue + RATES.fatigueAwakePerHour * ill.fatigue * h);
     const felt = feltTemp(c, cur.temp, !!opts.sleep);
     const [lo, hi] = comfort(c, !!opts.sleep);
     const over = felt < lo ? lo - felt : felt > hi ? felt - hi : 0;
@@ -353,6 +354,7 @@ function renderStatus() {
   if (c.bodyTemp >= RATES.tempDanger) conds.push('中暑，正在扣血');
   if (c.groggyUntil > cur.clock) conds.push('剛睡醒昏沉（敏捷、感知小扣）');
   if (stage >= 3) conds.push('疲憊：感知、敏捷小扣');
+  ills(c).forEach(i => conds.push(`<a href="#" onclick="openIlls();return false" class="cond">${esc(illText(i))}</a>`));
   const ld = loadInfo(c);
   if (ld.stage) conds.push(ld.stage === 3 ? `背的東西超過上限（${r1(ld.kg)}／${r1(ld.max)} 公斤），走不動` : `${ld.name}：走路約平常${ld.speedText}的速度`);
   const st = RATES.fatigueStages;
@@ -378,7 +380,8 @@ function renderStatus() {
       <div class="boxes">${FATIGUE_COLORS.slice(0, stage + 1).map(col => `<span style="background:${col};border-color:${col}"></span>`).join('')}</div></div>
     <div class="stat" data-tip="${esc(tips.temp)}"><div class="label"><span>冷熱</span><span>${tempWord(c.bodyTemp)}</span></div>
       <div class="bar temp"><div class="needle" style="left:calc(${needle}% - 1px)"></div></div></div>
-    ${conds.map(s => `<div class="cond">${s}</div>`).join('')}`;
+    ${conds.map(s => `<div class="cond">${s}</div>`).join('')}
+    <div class="small" style="text-align:right"><a href="#" onclick="openIlls();return false" data-tip="記生病、治療、好了。生不生病平常由 AI 判斷。">疾病</a></div>`;
   const a = c.attr;
   const at = k => `<span data-tip="${esc(k + '：' + ATTR_TIPS[k] + '一般人約 10，常人頂尖約 18。')}">${k} ${a[k]}</span>`;
   $('charCard').innerHTML = `<div class="row" style="justify-content:space-between"><span style="color:var(--accent)">${esc(c.name)}</span><button class="ghost small" onclick="openChars()" data-tip="新增角色、切換、一起行動或分開行動。">角色${cur.chars.length > 1 ? '（' + cur.chars.length + '）' : ''}</button></div>　<span data-tip="身材另外記，跟屬性分開：屬性管有多強，身材管有多大。">${c.height} 公分・${c.weight} 公斤</span><br>
@@ -491,7 +494,7 @@ ${othersForPrompt()}
 ${clockText(cur.clock)}，氣溫 ${cur.temp} 度。
 ${need('飢餓', c.hunger, mx.hunger)}、${need('口渴', c.thirst, mx.thirst)}
 血量 ${r1(c.hp)}／${r1(mx.hp)}，體力 ${r1(c.stamina)}／${r1(mx.stamina)}，疲勞：${FATIGUE_NAMES[fatigueStage(c)]}，冷熱：${tempWord(c.bodyTemp)}
-${c.groggyUntil > cur.clock ? '剛睡醒，還有點昏沉。\n' : ''}${c.dead ? '角色已經死亡。\n' : ''}
+${illsForPrompt(c)}${c.groggyUntil > cur.clock ? '剛睡醒，還有點昏沉。\n' : ''}${c.dead ? '角色已經死亡。\n' : ''}
 【身上的東西】
 ${invForPrompt(c)}
 ${creaturesForPrompt()}${goalsForPrompt()}
@@ -512,6 +515,7 @@ function buildTurnPrompt(action, actMode) {
 - 要合理、有真實感。角色的狀態以下面的數字為準，不要自己改。
 - 狀態區塊只填【角色】這個人的變化。【同行的角色】跟著一起行動，網頁會照同樣的時間和強度算；他們這段吃喝或受傷時寫在「同行」那行。分開行動的角色這段不在場，不要寫到他們。
 - 照【世界觀】寫，不要自己加入世界觀沒有的東西。如果作者的指示或劇情讓這個世界出現世界觀不允許的事（例：原本是現實世界，卻出現魔法、超能力、現實沒有的生物或科技），照寫，並在狀態區塊的「顛覆」那行寫出來。
+- 角色喝了不乾淨的水、吃了壞掉的東西、傷口沒處理、淋雨受凍太久時，照常理判斷會不會生病，生病寫在狀態區塊的「生病」那行。生病的影響網頁會算，你照【現在】寫的病況描述。
 - 【相關設定】裡登記過的人事物，照登記的內容寫，不要改。
 - 【目標】是角色現在想做到的事。情節照這個方向推，什麼事算阻礙也照這個判斷，但不要讓目標輕易達成，也不用每段都提。失敗是正常結果。期限照時間算，過了期限就照故事判斷算不算失敗。
 - 故事寫完後，在最後附上狀態區塊，格式照抄，填這一段的變化：
@@ -533,6 +537,9 @@ function buildTurnPrompt(action, actMode) {
 寢具：睡覺才填，睡的地方舒適度 0～10（${BED_REF}；身上有睡墊、睡袋就照它的數值）
 被子：睡覺才填，蓋的東西能抵多少度，沒蓋填 0（${COVER_REF}；身上有毯子、睡袋就照它的數值）
 同行：有同行的角色才填，他們這段吃喝或受傷時寫「名字｜飢餓 數字｜口渴 數字｜血量 數字」，只寫有變化的項目，多人用；分隔，沒有填 無（數字的算法跟上面一樣）
+生病：這段開始生病才寫「病名｜種類｜原因」，種類選 感冒、拉肚子、發燒、傷口感染 裡最像的一個，多個用；分隔，沒有填 無
+治療：這段有好好處理的病（吃藥、清洗包紮傷口、好好休養）寫病名，沒有填 無
+痊癒：已經好了的病寫病名（網頁也會照天數算自然好），沒有填 無
 目標：這段有人交付角色一件事、或角色自己決定要做到某件事時才寫，多條用；分隔，每條寫「內容｜期限｜大目標」。期限寫從現在起多久（例：3 天、5 小時），沒有填 無；大目標是要掛在哪條進行中的目標底下，寫那條的內容，沒有填 無。例：找到能擋風的地方｜無｜活過冬天。沒有新目標填 無
 目標結果：進行中的目標這段完成、失敗或放棄了才寫，每條寫「內容｜完成」（或 失敗、放棄），多條用；分隔，沒有填 無
 設定：這段第一次出現、有名字、之後可能再出現的人事物才寫（地點、人物、組織、物品、規則、事件），多條用；分隔，每條寫「名稱｜類別｜關鍵字｜內容｜相關」。類別選 地點、人物、組織、物品、規則、事件；關鍵字寫名字和別稱，用、分隔，用專有名詞，不要用常見字；內容 3～5 句，只寫事實，名稱寫在內容裡，句子裡不要用；和｜；相關寫有關的其他設定名稱，用、分隔，沒有填 無。例：老周｜人物｜老周、周獵戶｜老周是住在北坡岩洞的老獵人，六十多歲，左腿跛。他熟悉山裡的路，不信任外人。｜北坡岩洞。已經登記的、路人、只出現一次的不寫，主角也不寫，沒有填 無
@@ -668,7 +675,7 @@ function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm()
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('svModal').classList.contains('hidden')) return; // 顛覆世界觀一定要選一個
-  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal', 'goalModal', 'kindModal', 'loreModal', 'charsModal', 'catchModal'].find(id => !$(id).classList.contains('hidden'));
+  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal', 'goalModal', 'kindModal', 'loreModal', 'charsModal', 'catchModal', 'illModal'].find(id => !$(id).classList.contains('hidden'));
   if (open) closeModal(open);
 });
 
@@ -704,6 +711,7 @@ function readAIReply() {
   parseGoals(f);
   parseLore(f);
   parseCompanions(f);
+  parseIlls(f);
   refreshTurnForm();
   openTurn('已經照 AI 的回覆填好，檢查後按「套用」。');
   if (checkSubvert(f)) return false;
@@ -808,6 +816,7 @@ function applyTurn() {
   if (before.hunger && c.hunger <= 0) lines.push(`${who}餓到極限了，身體開始受損。`);
   if (before.thirst && c.thirst <= 0) lines.push(`${who}渴到極限了，身體開始受損。`);
   if (c.dead) lines.push(`${who}死了。`);
+  lines.push(...updateIlls(c)); mates.forEach(m => lines.push(...updateIlls(m)));
   lines.push(...applyCompanions(mates));
   c.at = cur.clock; mates.forEach(m => m.at = cur.clock);
 
