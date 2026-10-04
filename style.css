@@ -125,8 +125,7 @@ button:hover, .button:hover { filter: brightness(1.1); }
 .temp { background: linear-gradient(to right, var(--cold), var(--input) 35%, var(--input) 65%, var(--hot)); }
 .temp .needle { position: absolute; top: -2px; width: 3px; height: 14px; background: var(--text); border-radius: 2px; }
 .boxes { display: flex; gap: 4px; }
-.boxes span { flex: 1; height: 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--input); }
-.boxes span.on { background: var(--fatigue); border-color: var(--fatigue); }
+.boxes span { width: calc(20% - 3.2px); height: 10px; border: 1px solid var(--line); border-radius: 3px; }
 .cond { font-size: 13px; color: var(--hot); }
 
 /* 故事紀錄 */
@@ -159,6 +158,14 @@ details summary { cursor: pointer; color: var(--accent); margin: 6px 0; }
   padding: 8px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
   z-index: 8; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4); max-width: calc(100% - 32px);
 }
+.tip {
+  position: fixed; z-index: 20; max-width: 300px; pointer-events: none;
+  background: var(--card); color: var(--text); border: 1px solid var(--accent);
+  border-radius: 6px; padding: 8px 10px; font-size: 13px; line-height: 1.6;
+  white-space: pre-line; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+[data-tip] { cursor: help; }
+label[data-tip], .stat[data-tip] { cursor: default; }
 .toast {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
   background: var(--accent); color: var(--accent-text);

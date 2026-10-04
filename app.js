@@ -281,16 +281,30 @@ function sleepQuality(c, bed) {
 // ---------- 主畫面 ----------
 function renderAll() { renderStatus(); renderLog(); }
 
-function bar(label, val, max, color) {
+function bar(label, val, max, color, tip) {
   const pct = max > 0 ? clamp(val / max * 100, 0, 100) : 0;
-  return `<div class="stat"><div class="label"><span>${label}</span><span>${r1(val)} / ${r1(max)}</span></div>
+  return `<div class="stat" data-tip="${esc(tip)}"><div class="label"><span>${label}</span><span>${r1(val)} / ${r1(max)}</span></div>
     <div class="bar"><div class="fill" style="left:0;width:${pct}%;background:var(${color})"></div></div></div>`;
 }
 
+const FATIGUE_COLORS = ['#cdbfe6', '#b29ad8', '#9474c6', '#7552ab', '#56368d'];
+const ATTR_TIPS = {
+  力量: '搬、扛、拖、舉、出力。負重以力量算：力量×2 公斤內沒影響，×4 起重度負重，×6 是上限。',
+  敏捷: '靈巧、平衡、反應、手腳俐落。',
+  體質: '身體底子。血量、飢餓、口渴、體力的上限＝體質×10，所以體質高撐得久，但掉的速度跟一般人一樣。',
+  智力: '知識、推理、記性。主要給 AI 判斷用。',
+  感知: '觀察、直覺、看出別人（或動物）是害怕還是要攻擊。主要給 AI 判斷用。',
+  魅力: '讓人、動物願意接近、信任你。主要給 AI 判斷用。',
+};
+
 function renderStatus() {
   const c = cur.char, mx = maxes(c);
+  const felt = feltTemp(c, cur.temp);
+  const [lo, hi] = comfort(c, false);
   $('clock').textContent = clockText(cur.clock);
-  $('clockSub').textContent = `${cur.startDate ? cur.startDate + '・' : ''}氣溫 ${cur.temp} 度，體感 ${feltTemp(c, cur.temp)} 度`;
+  $('clock').dataset.tip = '遊戲時鐘，內部記到分鐘。每回合的耗時會把它往前推，所有跟時間有關的數字跟著變。';
+  $('clockSub').textContent = `${cur.startDate ? cur.startDate + '・' : ''}氣溫 ${cur.temp} 度，體感 ${felt} 度`;
+  $('clockSub').dataset.tip = `體感溫度＝環境氣溫＋身上衣物的保暖度。衣物保暖會自動在 ${c.warmMin}～${c.warmMax} 之間調到最接近舒服的值。活動時覺得舒服的範圍是 ${lo}～${hi} 度。`;
   const hp = clamp(c.hunger / mx.hunger * 50, 0, 50), tp = clamp(c.thirst / mx.thirst * 50, 0, 50);
   const stage = fatigueStage(c);
   const needle = (c.bodyTemp + 10) / 20 * 100;
@@ -302,21 +316,78 @@ function renderStatus() {
   if (c.bodyTemp >= RATES.tempDanger) conds.push('中暑，正在扣血');
   if (c.groggyUntil > cur.clock) conds.push('剛睡醒昏沉（敏捷、感知小扣）');
   if (stage >= 3) conds.push('疲憊：感知、敏捷小扣');
+  const st = RATES.fatigueStages;
+  const tips = {
+    hp: `身體的完整程度。受傷、流血、摔傷扣這條，扣光就死。上限＝體質×10。餓到見底、渴到見底、失溫或中暑時也會慢慢扣。`,
+    stamina: `短時間用力的消耗，照活動強度自動扣：輕不扣、中約 2.5 小時用完、重約 30 分鐘、極重約 10 分鐘。休息 30 分鐘回滿。疲勞越高，上限越低（現在上限 ${r1(mx.stamina)}）。`,
+    need: `黃色是飢餓，藍色是口渴，變少時各自往中間縮。
+飢餓：現在 ${r1(c.hunger)}／${r1(mx.hunger)}，每小時掉 ${RATES.hungerPerHour}，一天約 36。1 點約 67 大卡（一碗飯約 3、一頓正餐約 10）。見底後慢慢扣血。
+口渴：現在 ${r1(c.thirst)}／${r1(mx.thirst)}，每小時掉 ${RATES.thirstPerHour}（流汗時 1.5 倍），一天約 72。1 點約 40 毫升（一杯水約 6）。見底後扣血比較快。`,
+    fatigue: `醒著越久越累，只有睡覺能消。現在相當於醒了 ${r1(c.fatigue)} 小時。
+醒 ${st[0]} 小時：微倦（沒影響）
+醒 ${st[1]} 小時：疲倦（體力上限小降）
+醒 ${st[2]} 小時：疲憊（體力上限大降，感知、敏捷小扣）
+醒 ${st[3]} 小時：恍惚（隨時可能睡著）`,
+    temp: `指針在中間是正常，往左是冷、往右是熱。體感超出舒適範圍 ${RATES.tempTolerance} 度以內，身體靠發抖、流汗撐得住；超過越多偏得越快，偏到底就失溫或中暑、開始扣血。`,
+  };
   $('statusCard').innerHTML = `
-    ${bar('血量', c.hp, mx.hp, '--hp')}
-    ${bar('體力', c.stamina, mx.stamina, '--stamina')}
-    <div class="stat"><div class="label"><span>飢餓 ${r1(c.hunger)}</span><span>口渴 ${r1(c.thirst)}</span></div>
+    ${bar('血量', c.hp, mx.hp, '--hp', tips.hp)}
+    ${bar('體力', c.stamina, mx.stamina, '--stamina', tips.stamina)}
+    <div class="stat" data-tip="${esc(tips.need)}"><div class="label"><span>飢餓 ${r1(c.hunger)}</span><span>口渴 ${r1(c.thirst)}</span></div>
       <div class="bar dual"><div class="fill h" style="width:${hp}%"></div><div class="fill t" style="width:${tp}%"></div></div></div>
-    <div class="stat"><div class="label"><span>疲勞</span><span>${FATIGUE_NAMES[stage]}</span></div>
-      <div class="boxes">${[0, 1, 2, 3, 4].map(i => `<span class="${i <= stage ? 'on' : ''}"></span>`).join('')}</div></div>
-    <div class="stat"><div class="label"><span>冷熱</span><span>${tempWord(c.bodyTemp)}</span></div>
+    <div class="stat" data-tip="${esc(tips.fatigue)}"><div class="label"><span>疲勞</span><span>${FATIGUE_NAMES[stage]}</span></div>
+      <div class="boxes">${FATIGUE_COLORS.slice(0, stage + 1).map(col => `<span style="background:${col};border-color:${col}"></span>`).join('')}</div></div>
+    <div class="stat" data-tip="${esc(tips.temp)}"><div class="label"><span>冷熱</span><span>${tempWord(c.bodyTemp)}</span></div>
       <div class="bar temp"><div class="needle" style="left:calc(${needle}% - 1px)"></div></div></div>
     ${conds.map(s => `<div class="cond">${s}</div>`).join('')}`;
   const a = c.attr;
-  $('charCard').innerHTML = `<span style="color:var(--accent)">${esc(c.name)}</span>　${c.height} 公分・${c.weight} 公斤<br>
-    力量 ${a.力量}　敏捷 ${a.敏捷}　體質 ${a.體質}<br>智力 ${a.智力}　感知 ${a.感知}　魅力 ${a.魅力}<br>
-    <span class="muted">舒適 ${c.comfortLow}～${c.comfortHigh} 度（睡覺 ${c.comfortLow + RATES.sleepComfortShift}～${c.comfortHigh + RATES.sleepComfortShift}）・衣物保暖 ${c.warmMin}～${c.warmMax}</span>`;
+  const at = k => `<span data-tip="${esc(k + '：' + ATTR_TIPS[k] + '一般人約 10，常人頂尖約 18。')}">${k} ${a[k]}</span>`;
+  $('charCard').innerHTML = `<span style="color:var(--accent)">${esc(c.name)}</span>　<span data-tip="身材另外記，跟屬性分開：屬性管有多強，身材管有多大。">${c.height} 公分・${c.weight} 公斤</span><br>
+    ${at('力量')}　${at('敏捷')}　${at('體質')}<br>${at('智力')}　${at('感知')}　${at('魅力')}<br>
+    <span class="muted" data-tip="舒適溫度是沒穿衣服時覺得舒服的溫度，平常以活動時算，睡覺時靜止要再加 ${RATES.sleepComfortShift} 度。衣物保暖是身上整套衣服能抵多少度（下限～上限）。">舒適 ${c.comfortLow}～${c.comfortHigh} 度（睡覺 ${c.comfortLow + RATES.sleepComfortShift}～${c.comfortHigh + RATES.sleepComfortShift}）・衣物保暖 ${c.warmMin}～${c.warmMax}</span>`;
 }
+
+// ---------- 說明小框：電腦指上去、手機長按 ----------
+const TURN_TIPS = {
+  t_type: '一般：做事、移動。休息：只回體力。睡覺：疲勞和體力都回，睡多久由網頁算。',
+  t_dur: '這段花了多久。很短的事用分鐘，長一點用小時，天多半只有任務類會用到。可以有小數。',
+  t_temp: '現在環境幾度。改了之後，冷熱照新的氣溫算。',
+  t_hunger: '這段吃東西恢復多少。1 點約 67 大卡：一碗飯約 3、一頓正餐約 10、一整天的飯量約 36。',
+  t_thirst: '這段喝水恢復多少。1 點約 40 毫升：一杯水約 6、一公升約 25、一整天的水量約 72。',
+  t_int: '輕：坐著、手工、慢走，可以做一整天。中：趕路、搬東西，約 2.5 小時用完體力。重：鏟土、爬坡、扛重物，約 30 分鐘。極重：衝刺、打架，約 10 分鐘。',
+  t_stamina: '強度以外的特殊體力變化，平常填 0。',
+  t_hp: '受傷填負數，傷好了填正數。',
+  t_bed: '睡的地方舒不舒服，影響睡眠品質。地面 1、草堆 3、睡袋 5、普通床 7、好床 9。',
+  t_cover: '蓋的東西能抵多少度，只在睡覺時算，熱了可以踢開。薄毯約 5、普通棉被約 10、厚棉被約 15～20、羽絨睡袋約 15～30。',
+  t_wake: '被鬧鐘、別人或環境弄醒，就填睡了幾小時後醒。空白＝自然醒。',
+  t_wmin: '身上整套衣物最少能抵多少度（再怎麼脫、扇風也低不過這個）。',
+  t_wmax: '身上整套衣物最多能抵多少度。短袖短褲約 2～3、長袖長褲約 3～4.5、加外套約 5～7、冬天整套厚衣約 10～14。',
+};
+function initTips() {
+  for (const id in TURN_TIPS) { const el = $(id); if (el && el.closest('label')) el.closest('label').dataset.tip = TURN_TIPS[id]; }
+  const box = $('tip');
+  let pressTimer = null;
+  const show = (el, x, y) => {
+    box.textContent = el.dataset.tip; box.classList.remove('hidden');
+    const w = box.offsetWidth, h = box.offsetHeight;
+    box.style.left = clamp(x + 12, 8, innerWidth - w - 8) + 'px';
+    box.style.top = (y + 16 + h > innerHeight ? y - h - 12 : y + 16) + 'px';
+  };
+  const hide = () => box.classList.add('hidden');
+  document.addEventListener('mouseover', e => { const el = e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); else hide(); });
+  document.addEventListener('mousemove', e => { if (!box.classList.contains('hidden')) { const el = e.target.closest('[data-tip]'); if (el) show(el, e.clientX, e.clientY); } });
+  document.addEventListener('touchstart', e => {
+    const el = e.target.closest('[data-tip]');
+    hide(); clearTimeout(pressTimer);
+    if (!el) return;
+    const t = e.touches[0];
+    pressTimer = setTimeout(() => show(el, t.clientX, t.clientY), 450);
+  }, { passive: true });
+  document.addEventListener('touchend', () => clearTimeout(pressTimer));
+  document.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true });
+  document.addEventListener('scroll', hide, true);
+}
+
 function tempWord(t) {
   if (t <= -RATES.tempDanger) return '失溫';
   if (t <= -3) return '很冷';
@@ -642,4 +713,5 @@ function importSave(ev) {
 // ---------- 開始 ----------
 try { if (localStorage.getItem('survsim_theme') === 'beige') document.documentElement.dataset.theme = 'beige'; } catch (e) {}
 load();
+initTips();
 showHome();
