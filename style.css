@@ -59,8 +59,13 @@ a { color: var(--accent); }
 .topbar h1 > span:first-child { cursor: pointer; }
 .version { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 4px; cursor: pointer; text-decoration: underline dotted; }
 .version:hover { color: var(--accent); }
-.logText { white-space: pre-wrap; font-size: 14px; max-height: 65vh; overflow-y: auto; margin-bottom: 8px; }
-.logDate { color: var(--accent); font-weight: 600; }
+.chkText { white-space: pre-wrap; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 6px 0 10px; font-size: 14px; max-height: 30vh; overflow-y: auto; }
+.logText { font-size: 14px; max-height: 65vh; overflow-y: auto; margin-bottom: 8px; }
+.logDate { color: var(--accent); font-weight: 600; margin: 14px 0 6px; }
+.logDate:first-child { margin-top: 0; }
+.logEntry { border-left: 3px solid var(--line); padding: 4px 0 4px 10px; margin-bottom: 10px; }
+.logTitle { font-weight: 600; margin-bottom: 2px; }
+.logEntry div:not(.logTitle) { color: var(--text); opacity: 0.9; }
 .logVer { color: var(--accent); }
 .topbar-right { display: flex; gap: 10px; align-items: center; color: var(--muted); }
 

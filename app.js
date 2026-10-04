@@ -437,6 +437,31 @@ function needWord(kind, v, max) {
   const w = p > 0.4 ? '有點' : p > 0.15 ? '很' : p > 0 ? '極度' : '';
   return w ? w + (kind === '飢餓' ? '餓' : '渴') : (kind === '飢餓' ? '餓到見底' : '渴到見底');
 }
+// 給 AI 的故事背景：世界觀、角色、現在狀態、身上東西、生物、摘要、最近段落（回合和檢查共用）
+function storyContext() {
+  const c = cur.char, mx = maxes(c), a = c.attr;
+  const { summary, recent } = storySoFar();
+  const need = (n, v, m) => `${n} ${r1(v)}／${r1(m)}（${needWord(n, v, m)}）`;
+  return `【世界觀】
+${cur.world || '和現實一樣。'}${cur.startDate ? '\n故事開始的日期：' + cur.startDate : ''}
+
+【角色】
+${c.name}，${c.height} 公分，${c.weight} 公斤。
+力量 ${a.力量}、敏捷 ${a.敏捷}、體質 ${a.體質}、智力 ${a.智力}、感知 ${a.感知}、魅力 ${a.魅力}（一般人約 10）。
+${c.personality ? '個性：\n' + c.personality + '\n' : ''}${c.background ? '背景：' + c.background + '\n' : ''}${c.speech ? '說話方式：' + c.speech : ''}
+
+【現在】
+${clockText(cur.clock)}，氣溫 ${cur.temp} 度。
+${need('飢餓', c.hunger, mx.hunger)}、${need('口渴', c.thirst, mx.thirst)}
+血量 ${r1(c.hp)}／${r1(mx.hp)}，體力 ${r1(c.stamina)}／${r1(mx.stamina)}，疲勞：${FATIGUE_NAMES[fatigueStage(c)]}，冷熱：${tempWord(c.bodyTemp)}
+${c.groggyUntil > cur.clock ? '剛睡醒，還有點昏沉。\n' : ''}${c.dead ? '角色已經死亡。\n' : ''}
+【身上的東西】
+${invForPrompt(c)}
+${creaturesForPrompt()}
+${summary ? '【前情摘要】\n' + summary + '\n\n' : ''}【最近發生的事】
+${recent || '（故事剛開始）'}`;
+}
+
 function buildTurnPrompt(action, actMode) {
   const c = cur.char, mx = maxes(c), a = c.attr;
   const { summary, recent } = storySoFar();
@@ -467,24 +492,7 @@ function buildTurnPrompt(action, actMode) {
 被子：睡覺才填，蓋的東西能抵多少度，沒蓋填 0（${COVER_REF}；身上有毯子、睡袋就照它的數值）
 【狀態結束】
 
-【世界觀】
-${cur.world || '和現實一樣。'}${cur.startDate ? '\n故事開始的日期：' + cur.startDate : ''}
-
-【角色】
-${c.name}，${c.height} 公分，${c.weight} 公斤。
-力量 ${a.力量}、敏捷 ${a.敏捷}、體質 ${a.體質}、智力 ${a.智力}、感知 ${a.感知}、魅力 ${a.魅力}（一般人約 10）。
-${c.personality ? '個性：\n' + c.personality + '\n' : ''}${c.background ? '背景：' + c.background + '\n' : ''}${c.speech ? '說話方式：' + c.speech : ''}
-
-【現在】
-${clockText(cur.clock)}，氣溫 ${cur.temp} 度。
-${need('飢餓', c.hunger, mx.hunger)}、${need('口渴', c.thirst, mx.thirst)}
-血量 ${r1(c.hp)}／${r1(mx.hp)}，體力 ${r1(c.stamina)}／${r1(mx.stamina)}，疲勞：${FATIGUE_NAMES[fatigueStage(c)]}，冷熱：${tempWord(c.bodyTemp)}
-${c.groggyUntil > cur.clock ? '剛睡醒，還有點昏沉。\n' : ''}${c.dead ? '角色已經死亡。\n' : ''}
-【身上的東西】
-${invForPrompt(c)}
-${creaturesForPrompt()}
-${summary ? '【前情摘要】\n' + summary + '\n\n' : ''}【最近發生的事】
-${recent || '（故事剛開始）'}
+${storyContext()}
 
 【這一段】
 ${actMode === '角色' ? c.name + '的行動：' : '作者的指示：'}${action}`;
@@ -552,14 +560,14 @@ async function checkClipboard() {
   if (!t || !t.trim() || t === lastPrompt || t === lastPasted) return;
   const looksTurn = /[【\[]\s*狀態\s*[】\]]/.test(t);
   const looksSetup = /名字\s*[：:]/.test(t);
-  if ((waitingFor === 'turn' && (looksTurn || t.length > 30)) || (waitingFor === 'setup' && looksSetup) || (waitingFor === 'summary' && t.length > 20)) showClipBanner();
+  if ((waitingFor === 'turn' && (looksTurn || t.length > 30)) || (waitingFor === 'setup' && looksSetup) || (waitingFor === 'summary' && t.length > 20) || (waitingFor === 'check' && /問題/.test(t))) showClipBanner();
 }
 function showClipBanner() {
   $('clipBanner').classList.remove('hidden');
-  $('clipBtn').textContent = waitingFor === 'setup' ? '貼上並填入欄位' : waitingFor === 'summary' ? '貼上並更新摘要' : '貼上並完成這回合';
+  $('clipBtn').textContent = waitingFor === 'setup' ? '貼上並填入欄位' : waitingFor === 'summary' ? '貼上並更新摘要' : waitingFor === 'check' ? '貼上檢查結果' : '貼上並完成這回合';
 }
 function hideClipBanner() { $('clipBanner').classList.add('hidden'); }
-function clipBannerGo() { waitingFor === 'setup' ? pasteSetup() : waitingFor === 'summary' ? pasteSummary() : pasteAndFinish(); }
+function clipBannerGo() { waitingFor === 'setup' ? pasteSetup() : waitingFor === 'summary' ? pasteSummary() : waitingFor === 'check' ? pasteCheck() : pasteAndFinish(); }
 window.addEventListener('focus', checkClipboard);
 document.addEventListener('visibilitychange', checkClipboard);
 
@@ -570,7 +578,7 @@ function closeModal(id) { $(id).classList.add('hidden'); }
 function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm(); bedOptions(); renderTurnItems(); openModal('turnModal'); }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal'].find(id => !$(id).classList.contains('hidden'));
+  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal'].find(id => !$(id).classList.contains('hidden'));
   if (open) closeModal(open);
 });
 

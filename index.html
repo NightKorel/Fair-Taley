@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.6</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.7</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -143,6 +143,8 @@
           <button class="ghost" onclick="openModal('pasteModal')">手動貼上回覆</button>
           <button class="ghost" onclick="recordOnly()">只記錄（不用 AI）</button>
           <button class="ghost" onclick="openTurn('')">回合表</button>
+          <button class="ghost" onclick="copyCheckPrompt()" data-tip="把目前的故事和狀態交給 AI 檢查有沒有前後矛盾、跟數字對不上、不合常理的地方，並提出修正。">請 AI 檢查</button>
+          <button class="ghost" onclick="pasteCheck()">貼上檢查結果</button>
         </div>
       </section>
 
@@ -265,6 +267,24 @@
     <p class="small muted">收起來的不會附進提示詞，但體型紀錄還在，故事再提到牠會自動拿回來。AI 寫「離場」、或連續 15 段沒提到，會自動收起來。</p>
     <div id="crList"></div>
     <div class="row gap"><button class="ghost" onclick="closeModal('crModal')">關閉</button></div>
+  </div>
+</div>
+
+<div id="chkModal" class="modal hidden" onclick="if (event.target === this) closeModal('chkModal')">
+  <div class="modalBox">
+    <h3>AI 檢查結果</h3>
+    <div id="chkProblems" class="chkText"></div>
+    <div id="chkRewriteBox" class="hidden">
+      <h3>建議改寫最後一段</h3>
+      <div id="chkRewrite" class="chkText"></div>
+      <button onclick="applyRewrite()">用這段取代最後一段</button>
+    </div>
+    <div id="chkFixBox" class="hidden">
+      <h3>建議修正的數字</h3>
+      <div id="chkFix" class="chkText"></div>
+      <button onclick="applyCheckFix()">放進回合表檢查後套用</button>
+    </div>
+    <div class="row gap"><button class="ghost" onclick="closeModal('chkModal')">關閉</button></div>
   </div>
 </div>
 

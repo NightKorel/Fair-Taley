@@ -186,8 +186,99 @@ async function openChangelog() {
     const r = await fetch('更新日誌.txt', { cache: 'no-store' });
     if (!r.ok) throw 0;
     const t = await r.text();
-    $('logText').innerHTML = esc(t).replace(/^(\d{4}-\d{2}-\d{2})$/gm, '<span class="logDate">$1</span>').replace(/【(v[\d.]+)/g, '【<span class="logVer">$1</span>');
+    // 日期一行當標題；每筆「- 【標題】內容」變成一塊，內容照句號分行
+    const html = [];
+    for (const line of t.split(/\r?\n/)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(line.trim())) { html.push(`<div class="logDate">${line.trim()}</div>`); continue; }
+      const m = line.match(/^-\s*【(.+?)】(.*)$/);
+      if (!m) continue;
+      const title = esc(m[1]).replace(/^(v[\d.]+)/, '<span class="logVer">$1</span>');
+      const body = esc(m[2]).split(/(?<=。)/).map(x => x.trim()).filter(Boolean).map(x => `<div>${x}</div>`).join('');
+      html.push(`<div class="logEntry"><div class="logTitle">${title}</div>${body}</div>`);
+    }
+    $('logText').innerHTML = html.join('') || esc(t);
   } catch (e) {
     $('logText').textContent = '讀不到更新日誌（直接打開檔案時讀不到，放到網站上就可以）。';
   }
+}
+
+// ---------- 請 AI 檢查有沒有不合理，讓它修正（納可 2026-10-04） ----------
+function buildCheckPrompt() {
+  return `請你當這篇小說的校對，檢查目前的故事和狀態有沒有不合理的地方，然後提出修正。網頁負責記數字和計算，下面的數字是網頁算的。
+
+要檢查的事：
+- 前後矛盾：人物、地點、時間、天氣、說過的話、發生過的事對不上。
+- 跟數字對不上：故事寫的和角色狀態、身上的東西不一致（例：寫他吃了東西，但身上沒有食物；寫他很累，但疲勞是清醒）。
+- 不合常理：搬不動的東西被輕鬆搬走、花的時間不合理、生物的體型或行為不合理、違反世界觀。
+- 身上的東西：漏記、多記、數量不對。
+- 寫法：AI 替角色做了作者沒交代的重大決定。
+
+請用繁體中文，完全照下面的格式回覆：
+【問題】
+（一行一個問題，寫清楚哪裡不合理、為什麼。沒有問題就寫 無）
+【改寫最後一段】
+（最後一段故事需要修正的話，寫出改好的完整一段；不用改就寫 無）
+【狀態】
+（數字需要修正才寫，格式跟平常一樣，只寫要改的行，耗時填 0。例：用掉：麵包 1。不用改就整塊省略）
+【狀態結束】
+
+${storyContext()}`;
+}
+function copyCheckPrompt() {
+  if (!cur.log.some(e => e.type === '故事')) { toast('還沒有 AI 寫的故事可以檢查'); return; }
+  copyText(buildCheckPrompt(), '貼給 AI，複製 AI 的整段回覆後回來按「貼上檢查結果」。');
+  waitingFor = 'check';
+}
+let checkResult = null;
+function sectionOf(t, name) {
+  const m = t.match(new RegExp('[【\\[]\\s*' + name + '\\s*[】\\]]([\\s\\S]*?)(?=[【\\[]\\s*(?:問題|改寫最後一段|狀態|狀態結束)\\s*[】\\]]|$)'));
+  const v = m ? m[1].replace(/\*\*/g, '').trim() : '';
+  return /^(無|沒有)$/.test(v) ? '' : v;
+}
+async function pasteCheck() {
+  hideClipBanner();
+  const t = await readClip();
+  if (t === null) { toast('瀏覽器不讓網頁讀剪貼簿'); return; }
+  if (!t.trim() || t === lastPrompt) { toast('剪貼簿裡還沒有 AI 的回覆'); return; }
+  waitingFor = null;
+  const problems = sectionOf(t, '問題');
+  const rewrite = sectionOf(t, '改寫最後一段');
+  const si = t.search(/[【\[]\s*狀態\s*[】\]]/);
+  const block = si >= 0 ? t.slice(si).replace(/[【\[]\s*狀態結束\s*[】\]][\s\S]*$/, '') : '';
+  const fields = block ? parseLines(block) : {};
+  delete fields['類型'];
+  checkResult = { problems, rewrite, fields };
+  const hasFix = Object.keys(fields).some(k => !/^(耗時)$/.test(k) && !/^(無|沒有|0)$/.test(String(fields[k]).trim()));
+  $('chkProblems').textContent = problems || 'AI 說沒有發現問題。';
+  $('chkRewrite').textContent = rewrite || '';
+  $('chkRewriteBox').classList.toggle('hidden', !rewrite);
+  $('chkFixBox').classList.toggle('hidden', !hasFix);
+  $('chkFix').textContent = hasFix ? Object.entries(fields).filter(([k]) => k !== '耗時').map(([k, v]) => `${k}：${v}`).join('\n') : '';
+  pushUndo();
+  addLog('系統', `AI 檢查：${problems ? problems.split(/\r?\n/).filter(Boolean).length + ' 個問題。' + problems.replace(/\r?\n/g, ' ') : '沒有發現問題。'}`);
+  save(); renderLog();
+  openModal('chkModal');
+}
+function applyRewrite() {
+  const k = cur.log.map(e => e.type).lastIndexOf('故事');
+  if (k < 0 || !checkResult || !checkResult.rewrite) return;
+  pushUndo();
+  cur.log[k].text = checkResult.rewrite;
+  trackCreatures(checkResult.rewrite);
+  addLog('系統', '最後一段故事照 AI 檢查的建議改寫了。');
+  save(); renderLog();
+  $('chkRewriteBox').classList.add('hidden');
+  toast('已改寫最後一段');
+}
+function applyCheckFix() {
+  if (!checkResult) return;
+  // 數字修正交給回合表，耗時 0，讓玩家看過再套用
+  resetTurnForm();
+  const f = checkResult.fields;
+  const set = (k, id) => { if (f[k] != null && !isNaN(num(f[k], NaN))) $(id).value = num(f[k]); };
+  set('飢餓', 't_hunger'); set('口渴', 't_thirst'); set('體力', 't_stamina'); set('血量', 't_hp'); set('氣溫', 't_temp');
+  $('t_dur').value = 0;
+  parseItemLines(f); parseCreatures(f);
+  closeModal('chkModal');
+  openTurn('這是 AI 檢查後建議的修正（不花時間），看過再按「套用」。');
 }
