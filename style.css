@@ -132,8 +132,9 @@ button:hover, .button:hover { filter: brightness(1.1); }
 .stat .label { display: flex; justify-content: space-between; font-size: 13px; }
 .bar { height: 10px; background: var(--input); border: 1px solid var(--line); border-radius: 5px; position: relative; overflow: hidden; }
 .bar .fill { height: 100%; position: absolute; top: 0; }
-.dual .fill.h { left: 0; background: var(--hunger); }
-.dual .fill.t { right: 0; background: var(--thirst); }
+/* 兩條都靠在中間交界，變少時從外側邊緣往中間縮 */
+.dual .fill.h { right: 50%; background: var(--hunger); }
+.dual .fill.t { left: 50%; background: var(--thirst); }
 .temp { background: linear-gradient(to right, var(--cold), var(--input) 35%, var(--input) 65%, var(--hot)); }
 .temp .needle { position: absolute; top: -2px; width: 3px; height: 14px; background: var(--text); border-radius: 2px; }
 .boxes { display: flex; gap: 4px; }
