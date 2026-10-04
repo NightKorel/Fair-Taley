@@ -51,18 +51,16 @@ function copySummaryPrompt() {
   const { end, text } = buildSummaryPrompt();
   if (end <= sumFrom()) { toast('沒有需要歸納的段落'); return; }
   cur.pendingSummaryEnd = end;
-  copyText(text, '貼給 AI，複製 AI 回覆的摘要後回來按「一鍵貼上摘要」。');
+  copyText(text, '貼給 AI，複製 AI 回覆的摘要後回來按「貼上 AI 回覆」。');
   waitingFor = 'summary';
 }
 function cleanSummary(t) {
   return String(t).replace(/\*\*/g, '').replace(/^[\s\S]*?[【\[]\s*摘要\s*[】\]]\s*/, '').trim();
 }
-async function pasteSummary() {
-  hideClipBanner();
-  const t = await readClip();
-  if (t === null) { toast('瀏覽器不讓網頁讀剪貼簿，請手動貼到框裡再按「儲存摘要」'); return; }
-  if (!t.trim() || t === lastPrompt) { toast('剪貼簿裡還沒有 AI 的回覆'); return; }
-  waitingFor = null;
+// 下面三個 paste 由 pasteAI() 分辨好種類後呼叫，t 是已經讀到的回覆
+function pasteSummary(t) {
+  // 重新整理過、忘了歸納到哪：照現在的段落算
+  if (!cur.pendingSummaryEnd) cur.pendingSummaryEnd = Math.max(sumFrom(), cur.log.length - keepRecent());
   $('sumText').value = cleanSummary(t);
   saveSummary(true);
 }
@@ -241,7 +239,7 @@ ${storyContext()}`;
 function copyCheckPrompt() {
   // 隨時都能檢查：還沒有故事時，就只檢查角色、世界觀、身上東西合不合理
   try {
-    copyText(buildCheckPrompt(), '貼給 AI，複製 AI 的整段回覆後回來按「貼上檢查結果」。');
+    copyText(buildCheckPrompt(), '貼給 AI，複製 AI 的整段回覆後回來按「貼上 AI 回覆」。');
     waitingFor = 'check';
   } catch (e) {
     toast('做檢查提示詞時出錯：' + e.message);
@@ -253,12 +251,7 @@ function sectionOf(t, name) {
   const v = m ? m[1].replace(/\*\*/g, '').trim() : '';
   return /^(無|沒有)$/.test(v) ? '' : v;
 }
-async function pasteCheck() {
-  hideClipBanner();
-  const t = await readClip();
-  if (t === null) { toast('瀏覽器不讓網頁讀剪貼簿'); return; }
-  if (!t.trim() || t === lastPrompt) { toast('剪貼簿裡還沒有 AI 的回覆'); return; }
-  waitingFor = null;
+function pasteCheck(t) {
   const problems = sectionOf(t, '問題');
   const rewrite = sectionOf(t, '改寫最後一段');
   const si = t.search(/[【\[]\s*狀態\s*[】\]]/);
@@ -326,15 +319,10 @@ ${fresh || '（沒有）'}`;
 }
 function copyChapterPrompt() {
   if (!confirm(`結束第 ${chapters().length + 1} 章？這一章所有段落都會歸納成一份章節摘要，之後除非你手動改，不會再動。`)) return;
-  copyText(buildChapterPrompt(), '貼給 AI，複製 AI 的回覆後回來按「貼上章節摘要」。');
+  copyText(buildChapterPrompt(), '貼給 AI，複製 AI 的回覆後回來按「貼上 AI 回覆」。');
   waitingFor = 'chapter';
 }
-async function pasteChapter() {
-  hideClipBanner();
-  const t = await readClip();
-  if (t === null) { toast('瀏覽器不讓網頁讀剪貼簿，請手動把章節摘要寫進框裡，再按「自己寫好，直接換章」'); return; }
-  if (!t.trim() || t === lastPrompt) { toast('剪貼簿裡還沒有 AI 的回覆'); return; }
-  waitingFor = null;
+function pasteChapter(t) {
   const title = (t.match(/[【\[]\s*章名\s*[】\]]\s*\n?\s*([^\n【\[]+)/) || [])[1] || '';
   const sum = t.replace(/\*\*/g, '').replace(/^[\s\S]*?[【\[]\s*章節摘要\s*[】\]]\s*/, '').trim();
   finishChapter(title.trim(), sum);

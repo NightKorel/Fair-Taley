@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>存活模擬</title>
-<link rel="stylesheet" href="style.css?v=0.0.16">
+<link rel="stylesheet" href="style.css?v=0.0.17">
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.16</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.17</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -140,7 +140,7 @@
         <textarea id="input" rows="3"></textarea>
         <div class="row gap wrap">
           <button onclick="copyTurnPrompt()">複製提示詞給 AI</button>
-          <button onclick="pasteAndFinish()">一鍵貼上並完成</button>
+          <button onclick="pasteAI()" data-tip="AI 回完、複製它的整段回覆後按這顆。故事、檢查結果、摘要、章節摘要都用這顆，網頁會自己分辨是哪一種。">貼上 AI 回覆</button>
           <button class="ghost" onclick="recordOnly()">只記錄（不用 AI）</button>
           <div class="more">
             <button class="ghost" id="moreBtn" onclick="toggleMore(event)">更多 ▾</button>
@@ -148,7 +148,6 @@
               <button class="ghost" onclick="openModal('pasteModal')">手動貼上回覆</button>
               <button class="ghost" onclick="openTurn('')">回合表</button>
               <button class="ghost" onclick="copyCheckPrompt()" data-tip="把目前的故事和狀態交給 AI 檢查有沒有前後矛盾、跟數字對不上、不合常理的地方，並提出修正。">請 AI 檢查</button>
-              <button class="ghost" onclick="pasteCheck()">貼上檢查結果</button>
             </div>
           </div>
         </div>
@@ -162,7 +161,7 @@
   <div class="modalBox">
     <h3>貼上 AI 回覆</h3>
     <textarea id="aiReply" rows="12" placeholder="把 AI 的整段回覆貼在這裡"></textarea>
-    <div class="row gap"><button onclick="readAIReply()">讀取回覆</button><button class="ghost" onclick="closeModal('pasteModal')">關閉</button></div>
+    <div class="row gap"><button onclick="readPasted()">讀取回覆</button><button class="ghost" onclick="closeModal('pasteModal')">關閉</button></div>
   </div>
 </div>
 
@@ -231,7 +230,7 @@
     <textarea id="sumText" rows="6" placeholder="還沒有摘要"></textarea>
     <div class="row gap wrap">
       <button onclick="copySummaryPrompt()">複製歸納提示詞</button>
-      <button onclick="pasteSummary()">一鍵貼上摘要</button>
+      <button onclick="pasteAI()" data-tip="複製 AI 回覆的摘要後按這顆。">貼上 AI 回覆</button>
       <button class="ghost" onclick="saveSummary()" data-tip="只存你改的文字，已歸納到第幾段不變。">儲存摘要</button>
       <button class="ghost" onclick="markSummarized()" data-tip="不用 AI、自己寫完摘要時用：存下摘要，並把目前為止的舊段落標成已歸納。">儲存並標成已歸納</button>
       <button class="ghost" onclick="closeModal('sumModal')">關閉</button>
@@ -240,7 +239,6 @@
     <p class="small muted">換章時，這一章所有段落會歸納成一份章節摘要存起來，之後除非你手動改，不會再動。</p>
     <div class="row gap wrap">
       <button onclick="copyChapterPrompt()">結束這一章（複製提示詞）</button>
-      <button onclick="pasteChapter()">貼上章節摘要</button>
       <button class="ghost" onclick="finishChapterManual()" data-tip="不用 AI：把上面框裡的摘要直接當成這一章的章節摘要。">自己寫好，直接換章</button>
     </div>
     <div id="chList"></div>
@@ -342,6 +340,20 @@
   </div>
 </div>
 
+<div id="kindModal" class="modal hidden" onclick="if (event.target === this) closeModal('kindModal')">
+  <div class="modalBox">
+    <h3>這是哪一種回覆？</h3>
+    <p class="small muted">網頁看不出這段 AI 回覆是哪一種（AI 可能沒照格式寫），請選一個。</p>
+    <div class="row gap wrap">
+      <button onclick="pickKind('turn')">這回合的故事</button>
+      <button class="ghost" onclick="pickKind('check')">檢查結果</button>
+      <button class="ghost" onclick="pickKind('summary')">劇情摘要</button>
+      <button class="ghost" onclick="pickKind('chapter')">章節摘要</button>
+      <button class="ghost" onclick="closeModal('kindModal')">取消</button>
+    </div>
+  </div>
+</div>
+
 <div id="promptModal" class="modal hidden" onclick="if (event.target === this) closeModal('promptModal')">
   <div class="modalBox">
     <h3>提示詞</h3>
@@ -361,9 +373,9 @@
 <div id="tip" class="tip hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=0.0.16"></script>
-<script src="items.js?v=0.0.16"></script>
-<script src="story.js?v=0.0.16"></script>
-<script src="goals.js?v=0.0.16"></script>
+<script src="app.js?v=0.0.17"></script>
+<script src="items.js?v=0.0.17"></script>
+<script src="story.js?v=0.0.17"></script>
+<script src="goals.js?v=0.0.17"></script>
 </body>
 </html>

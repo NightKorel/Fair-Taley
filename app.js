@@ -508,7 +508,7 @@ function copyTurnPrompt() {
   if (!text) { toast('先寫這回合要做什麼'); return; }
   const p = buildTurnPrompt(text, mode);
   pushUndo(); addLog(mode, text); $('input').value = ''; save(); renderLog();
-  copyText(p, '貼給 AI，複製 AI 的整段回覆後回來按「一鍵貼上並完成」。');
+  copyText(p, '貼給 AI，複製 AI 的整段回覆後回來按「貼上 AI 回覆」。');
 }
 
 // 提示詞視窗：跳出來時自動複製；自動複製失敗就提示按按鈕再試
@@ -533,20 +533,52 @@ function tryCopy(text) {
   if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(ok, fail);
   else fail();
 }
-// ---------- 剪貼簿：一鍵貼上並完成、回到網頁時自動檢查 ----------
+// ---------- 剪貼簿：貼上 AI 回覆（自己分辨是哪一種）、回到網頁時自動檢查 ----------
 let lastPrompt = '', lastPasted = '', waitingFor = null;
 async function readClip() {
   try { return (await navigator.clipboard.readText()) || ''; } catch (e) { return null; }
 }
-async function pasteAndFinish() {
+// 成對的貼上按鈕合成一顆（納可 2026-10-04）：先看回覆裡的標記分辨是哪一種，
+// 看不出來就照最後按的複製按鈕，再看不出來才問玩家
+const REPLY_KINDS = { turn: '這回合的故事', check: '檢查結果', summary: '劇情摘要', chapter: '章節摘要' };
+function detectKind(t) {
+  if (/[【\[]\s*問題\s*[】\]]/.test(t)) return 'check';
+  if (/[【\[]\s*(章名|章節摘要)\s*[】\]]/.test(t)) return 'chapter';
+  if (/[【\[]\s*摘要\s*[】\]]/.test(t)) return 'summary';
+  if (/[【\[]\s*狀態\s*[】\]]/.test(t)) return 'turn';
+  return null;
+}
+function guessKind(t) { return detectKind(t) || (REPLY_KINDS[waitingFor] ? waitingFor : null); }
+async function pasteAI() {
   hideClipBanner();
   const t = await readClip();
   if (t === null) { toast('瀏覽器不讓網頁讀剪貼簿，請手動貼上'); openModal('pasteModal'); return; }
   if (!t.trim() || t === lastPrompt) { toast('剪貼簿裡還沒有 AI 的回覆'); return; }
   if (t === lastPasted) { toast('這段回覆已經用過了'); return; }
+  routeReply(t);
+}
+let kindPending = '';
+function routeReply(t, kind) {
+  kind = kind || guessKind(t);
+  if (!kind) { kindPending = t; openModal('kindModal'); return; }
   lastPasted = t;
-  $('aiReply').value = t;
   waitingFor = null;
+  if (kind === 'check') pasteCheck(t);
+  else if (kind === 'summary') pasteSummary(t);
+  else if (kind === 'chapter') pasteChapter(t);
+  else finishTurnText(t);
+}
+function pickKind(kind) { closeModal('kindModal'); const t = kindPending; kindPending = ''; if (t) routeReply(t, kind); }
+// 手動貼上視窗：一樣自己分辨
+function readPasted() {
+  const t = $('aiReply').value.trim();
+  if (!t) { toast('先貼上 AI 的回覆'); return; }
+  $('aiReply').value = '';
+  closeModal('pasteModal');
+  routeReply(t);
+}
+function finishTurnText(t) {
+  $('aiReply').value = t;
   if (readAIReply()) { applyTurn(); toast('已貼上並完成這回合'); }
   else if (subvertPending) subvertPending.auto = true;
 
@@ -564,16 +596,16 @@ async function checkClipboard() {
   if (!waitingFor || document.hidden) return;
   const t = await readClip();
   if (!t || !t.trim() || t === lastPrompt || t === lastPasted) return;
-  const looksTurn = /[【\[]\s*狀態\s*[】\]]/.test(t);
-  const looksSetup = /名字\s*[：:]/.test(t);
-  if ((waitingFor === 'turn' && (looksTurn || t.length > 30)) || (waitingFor === 'setup' && looksSetup) || (waitingFor === 'summary' && t.length > 20) || (waitingFor === 'check' && /問題/.test(t)) || (waitingFor === 'chapter' && /章節摘要|章名/.test(t))) showClipBanner();
+  if (waitingFor === 'setup') { if (/名字\s*[：:]/.test(t)) showClipBanner('貼上並填入欄位'); return; }
+  const kind = detectKind(t) || (t.length > 20 ? waitingFor : null);
+  if (REPLY_KINDS[kind]) showClipBanner(`貼上${REPLY_KINDS[kind]}`);
 }
-function showClipBanner() {
+function showClipBanner(label) {
   $('clipBanner').classList.remove('hidden');
-  $('clipBtn').textContent = waitingFor === 'setup' ? '貼上並填入欄位' : waitingFor === 'summary' ? '貼上並更新摘要' : waitingFor === 'check' ? '貼上檢查結果' : waitingFor === 'chapter' ? '貼上章節摘要' : '貼上並完成這回合';
+  $('clipBtn').textContent = label;
 }
 function hideClipBanner() { $('clipBanner').classList.add('hidden'); }
-function clipBannerGo() { waitingFor === 'setup' ? pasteSetup() : waitingFor === 'summary' ? pasteSummary() : waitingFor === 'check' ? pasteCheck() : waitingFor === 'chapter' ? pasteChapter() : pasteAndFinish(); }
+function clipBannerGo() { waitingFor === 'setup' ? pasteSetup() : pasteAI(); }
 window.addEventListener('focus', checkClipboard);
 document.addEventListener('visibilitychange', checkClipboard);
 
@@ -592,7 +624,7 @@ function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm()
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('svModal').classList.contains('hidden')) return; // 顛覆世界觀一定要選一個
-  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal', 'goalModal'].find(id => !$(id).classList.contains('hidden'));
+  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal', 'goalModal', 'kindModal'].find(id => !$(id).classList.contains('hidden'));
   if (open) closeModal(open);
 });
 
