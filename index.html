@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title" onclick="showHome()">存活模擬 <span class="version">v0.0.3</span></h1>
+  <h1 id="title" onclick="showHome()">存活模擬 <span class="version">v0.0.4</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -115,8 +115,10 @@
       <section class="card" id="statusCard"></section>
       <section class="card small" id="charCard"></section>
       <section class="card small" id="invCard"></section>
+      <section class="card small" id="sumCard"></section>
       <section class="card">
         <div class="row gap wrap">
+          <button class="ghost" onclick="openEdit()">編輯角色與故事</button>
           <button class="ghost" onclick="exportSave()">匯出存檔</button>
           <button class="ghost" onclick="undoTurn()">復原上一回合</button>
         </div>
@@ -208,6 +210,47 @@
   </div>
 </div>
 
+<div id="sumModal" class="modal hidden" onclick="if (event.target === this) closeModal('sumModal')">
+  <div class="modalBox">
+    <h3>劇情摘要</h3>
+    <p class="small muted" id="sumInfo"></p>
+    <p class="small muted">每段提示詞都會附上這份摘要和最近幾段原文。按「複製歸納提示詞」交給 AI，AI 會把舊摘要和新段落合成新摘要；也可以自己直接改。</p>
+    <textarea id="sumText" rows="12" placeholder="還沒有摘要"></textarea>
+    <div class="row gap wrap">
+      <button onclick="copySummaryPrompt()">複製歸納提示詞</button>
+      <button onclick="pasteSummary()">一鍵貼上摘要</button>
+      <button class="ghost" onclick="saveSummary()" data-tip="只存你改的文字，已歸納到第幾段不變。">儲存摘要</button>
+      <button class="ghost" onclick="markSummarized()" data-tip="不用 AI、自己寫完摘要時用：存下摘要，並把目前為止的舊段落標成已歸納。">儲存並標成已歸納</button>
+      <button class="ghost" onclick="closeModal('sumModal')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div id="editModal" class="modal hidden" onclick="if (event.target === this) closeModal('editModal')">
+  <div class="modalBox">
+    <h3>編輯角色與故事</h3>
+    <p class="small muted">隨時可以改，不影響生存數字。改了會在紀錄裡留一筆。</p>
+    <div class="grid2">
+      <label>故事名稱<input id="e_title"></label>
+      <label>故事人稱<select id="e_person"><option>第三人稱</option><option>第一人稱</option><option>第二人稱</option></select></label>
+    </div>
+    <label>世界觀<textarea id="e_world" rows="3"></textarea></label>
+    <div class="grid4">
+      <label>開始的日期<input id="e_date"></label>
+      <label>名字<input id="e_name"></label>
+      <label>身高（公分）<input id="e_height" type="number"></label>
+      <label>體重（公斤）<input id="e_weight" type="number"></label>
+      <label data-tip="主要給 AI 判斷用，不影響生存數字。">智力<input id="e_int" type="number" step="0.1"></label>
+      <label data-tip="主要給 AI 判斷用，不影響生存數字。">感知<input id="e_wis" type="number" step="0.1"></label>
+      <label data-tip="主要給 AI 判斷用，不影響生存數字。">魅力<input id="e_cha" type="number" step="0.1"></label>
+    </div>
+    <label>個性（用短的行為句，一行一句）<textarea id="e_personality" rows="3"></textarea></label>
+    <label>背景與經歷<textarea id="e_background" rows="3"></textarea></label>
+    <label>說話方式<textarea id="e_speech" rows="2"></textarea></label>
+    <div class="row gap"><button onclick="saveEdit()">儲存</button><button class="ghost" onclick="closeModal('editModal')">取消</button></div>
+  </div>
+</div>
+
 <div id="promptModal" class="modal hidden" onclick="if (event.target === this) closeModal('promptModal')">
   <div class="modalBox">
     <h3>提示詞</h3>
@@ -229,5 +272,6 @@
 
 <script src="app.js"></script>
 <script src="items.js"></script>
+<script src="story.js"></script>
 </body>
 </html>

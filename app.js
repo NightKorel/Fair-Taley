@@ -282,7 +282,7 @@ function sleepQuality(c, bed) {
 }
 
 // ---------- 主畫面 ----------
-function renderAll() { renderStatus(); renderLog(); renderSideInv(); }
+function renderAll() { renderStatus(); renderLog(); renderSideInv(); renderSumCard(); }
 
 function bar(label, val, max, color, tip) {
   const pct = max > 0 ? clamp(val / max * 100, 0, 100) : 0;
@@ -439,7 +439,7 @@ function needWord(kind, v, max) {
 }
 function buildTurnPrompt(action, actMode) {
   const c = cur.char, mx = maxes(c), a = c.attr;
-  const recent = cur.log.slice(-10).map(e => `${e.type === '故事' ? '' : '（' + e.type + '）'}${e.text}`).join('\n');
+  const { summary, recent } = storySoFar();
   const need = (n, v, m) => `${n} ${r1(v)}／${r1(m)}（${needWord(n, v, m)}）`;
   return `你是一篇小說的敘事者，和作者一起用「存活模擬」寫故事。網頁負責記數字和計算，你負責判斷和描述。
 
@@ -480,7 +480,7 @@ ${c.groggyUntil > cur.clock ? '剛睡醒，還有點昏沉。\n' : ''}${c.dead ?
 【身上的東西】
 ${invForPrompt(c)}
 
-【最近發生的事】
+${summary ? '【前情摘要】\n' + summary + '\n\n' : ''}【最近發生的事】
 ${recent || '（故事剛開始）'}
 
 【這一段】
@@ -549,14 +549,14 @@ async function checkClipboard() {
   if (!t || !t.trim() || t === lastPrompt || t === lastPasted) return;
   const looksTurn = /[【\[]\s*狀態\s*[】\]]/.test(t);
   const looksSetup = /名字\s*[：:]/.test(t);
-  if ((waitingFor === 'turn' && (looksTurn || t.length > 30)) || (waitingFor === 'setup' && looksSetup)) showClipBanner();
+  if ((waitingFor === 'turn' && (looksTurn || t.length > 30)) || (waitingFor === 'setup' && looksSetup) || (waitingFor === 'summary' && t.length > 20)) showClipBanner();
 }
 function showClipBanner() {
   $('clipBanner').classList.remove('hidden');
-  $('clipBtn').textContent = waitingFor === 'setup' ? '貼上並填入欄位' : '貼上並完成這回合';
+  $('clipBtn').textContent = waitingFor === 'setup' ? '貼上並填入欄位' : waitingFor === 'summary' ? '貼上並更新摘要' : '貼上並完成這回合';
 }
 function hideClipBanner() { $('clipBanner').classList.add('hidden'); }
-function clipBannerGo() { waitingFor === 'setup' ? pasteSetup() : pasteAndFinish(); }
+function clipBannerGo() { waitingFor === 'setup' ? pasteSetup() : waitingFor === 'summary' ? pasteSummary() : pasteAndFinish(); }
 window.addEventListener('focus', checkClipboard);
 document.addEventListener('visibilitychange', checkClipboard);
 
@@ -567,7 +567,7 @@ function closeModal(id) { $(id).classList.add('hidden'); }
 function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm(); bedOptions(); renderTurnItems(); openModal('turnModal'); }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  const open = ['promptModal', 'pasteModal', 'turnModal'].find(id => !$(id).classList.contains('hidden'));
+  const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal'].find(id => !$(id).classList.contains('hidden'));
   if (open) closeModal(open);
 });
 
