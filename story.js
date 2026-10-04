@@ -369,3 +369,41 @@ function saveChapter(k) {
   chapters()[k].summary = $('chS' + k).value.trim();
   save(); renderChapters(); toast(`第 ${k + 1} 章已儲存`);
 }
+
+// ---------- 顛覆世界觀的確認（設計 2026-10-03，做 2026-10-04） ----------
+// AI 在狀態區塊「顛覆」寫了東西＝它判定這段出現了世界觀不允許的事，跳窗問玩家：
+// 確定 → 那一句（玩家可以改）寫進世界觀，之後 AI 當成這個世界的一部分，同樣的事不再跳窗
+// 不要 → 撤回這段：AI 這段故事拿掉，玩家這回合的行動放回輸入框，可以改了再問一次
+let subvertPending = null;
+function checkSubvert(f) {
+  const v = (f['顛覆'] || '').trim();
+  if (!v || /^(無|沒有|否|不是|0)$/.test(v)) return false;
+  subvertPending = { auto: false };
+  $('svText').value = v;
+  openModal('svModal');
+  return true;
+}
+function confirmSubvert() {
+  const line = $('svText').value.trim();
+  if (!line) { toast('先寫要加進世界觀的那一句'); return; }
+  const auto = subvertPending && subvertPending.auto;
+  subvertPending = null;
+  cur.world = (cur.world ? cur.world.trim() + '\n' : '') + line;
+  addLog('系統', `世界觀新增：${line}`);
+  save(); renderLog(); closeModal('svModal');
+  if (auto) { applyTurn(); toast('已寫進世界觀，並完成這回合'); }
+  else toast('已寫進世界觀，檢查回合表後按「套用」');
+}
+function rejectSubvert() {
+  subvertPending = null;
+  closeModal('svModal'); closeModal('turnModal');
+  undoTurn(); // 回到 AI 這段故事進來之前
+  const last = cur.log[cur.log.length - 1];
+  if (last && (last.type === '角色' || last.type === '作者')) {
+    cur.log.pop();
+    $('input').value = last.text;
+    setMode(last.type);
+  }
+  resetTurnForm(); save(); renderAll();
+  toast('撤回這段了，行動放回輸入框，可以改了再問一次');
+}

@@ -473,6 +473,7 @@ function buildTurnPrompt(action, actMode) {
 - 只寫這一段發生的事。不替角色做作者沒交代的重大決定。
 - 動物（或其他生物）第一次出場時，要明確設定牠的體型：身長或肩高幾公分、體重幾公斤，寫在狀態區塊的「生物」那行。已經登記過的照登記的數字寫，不要改。
 - 要合理、有真實感。角色的狀態以下面的數字為準，不要自己改。
+- 照【世界觀】寫，不要自己加入世界觀沒有的東西。如果作者的指示或劇情讓這個世界出現世界觀不允許的事（例：原本是現實世界，卻出現魔法、超能力、現實沒有的生物或科技），照寫，並在狀態區塊的「顛覆」那行寫出來。
 - 故事寫完後，在最後附上狀態區塊，格式照抄，填這一段的變化：
 【狀態】
 類型：一般（或 休息、睡覺）
@@ -490,6 +491,7 @@ function buildTurnPrompt(action, actMode) {
 氣溫：現在環境幾度（數字）
 寢具：睡覺才填，睡的地方舒適度 0～10（${BED_REF}；身上有睡墊、睡袋就照它的數值）
 被子：睡覺才填，蓋的東西能抵多少度，沒蓋填 0（${COVER_REF}；身上有毯子、睡袋就照它的數值）
+顛覆：這段出現了世界觀不允許的事，就寫一句要加進世界觀的話，說明這個世界多了什麼（例：這個世界有人能用意念移動小東西）；世界觀裡已經寫了的不算，沒有填 無
 【狀態結束】
 
 ${storyContext()}
@@ -543,6 +545,7 @@ async function pasteAndFinish() {
   $('aiReply').value = t;
   waitingFor = null;
   if (readAIReply()) { applyTurn(); toast('已貼上並完成這回合'); }
+  else if (subvertPending) subvertPending.auto = true;
 
 }
 async function pasteSetup() {
@@ -585,6 +588,7 @@ function closeModal(id) { $(id).classList.add('hidden'); }
 function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm(); bedOptions(); renderTurnItems(); openModal('turnModal'); }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  if (!$('svModal').classList.contains('hidden')) return; // 顛覆世界觀一定要選一個
   const open = ['promptModal', 'pasteModal', 'turnModal', 'invModal', 'sumModal', 'editModal', 'logModal', 'crModal', 'chkModal'].find(id => !$(id).classList.contains('hidden'));
   if (open) closeModal(open);
 });
@@ -620,6 +624,7 @@ function readAIReply() {
   parseCreatures(f);
   refreshTurnForm();
   openTurn('已經照 AI 的回覆填好，檢查後按「套用」。');
+  if (checkSubvert(f)) return false;
   return true;
 }
 

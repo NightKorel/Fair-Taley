@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>存活模擬</title>
-<link rel="stylesheet" href="style.css?v=0.0.12">
+<link rel="stylesheet" href="style.css?v=0.0.13">
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.12</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.13</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -306,6 +306,19 @@
   </div>
 </div>
 
+<div id="svModal" class="modal hidden">
+  <div class="modalBox">
+    <h3>這段好像在顛覆世界觀</h3>
+    <p class="small muted">AI 判斷這段出現了原本世界觀不允許的事。確定要讓這個世界變成這樣嗎？</p>
+    <p class="small">確定的話，下面這一句會寫進世界觀，之後 AI 會把它當成這個世界的一部分，同樣的事不會再問。可以先改再確定。</p>
+    <textarea id="svText" rows="3"></textarea>
+    <div class="row gap wrap">
+      <button onclick="confirmSubvert()">確定，寫進世界觀</button>
+      <button class="ghost" onclick="rejectSubvert()" data-tip="AI 這段故事拿掉，你這回合的行動放回輸入框，可以改了再問一次。">不要，撤回這段</button>
+    </div>
+  </div>
+</div>
+
 <div id="promptModal" class="modal hidden" onclick="if (event.target === this) closeModal('promptModal')">
   <div class="modalBox">
     <h3>提示詞</h3>
@@ -325,8 +338,8 @@
 <div id="tip" class="tip hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=0.0.12"></script>
-<script src="items.js?v=0.0.12"></script>
-<script src="story.js?v=0.0.12"></script>
+<script src="app.js?v=0.0.13"></script>
+<script src="items.js?v=0.0.13"></script>
+<script src="story.js?v=0.0.13"></script>
 </body>
 </html>
