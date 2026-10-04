@@ -8,7 +8,7 @@
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title" onclick="showHome()">存活模擬 <span class="version">v0.0.2</span></h1>
+  <h1 id="title" onclick="showHome()">存活模擬 <span class="version">v0.0.3</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -87,10 +87,12 @@
     <div class="grid4">
       <label>舒適溫度下限（沒穿衣服、活動時）<input id="c_clow" type="number" value="22"></label>
       <label>舒適溫度上限（沒穿衣服、活動時）<input id="c_chigh" type="number" value="26"></label>
-      <label>身上衣物保暖下限<input id="c_wmin" type="number" step="0.5" value="3"></label>
-      <label>身上衣物保暖上限<input id="c_wmax" type="number" step="0.5" value="4.5"></label>
     </div>
-    <p class="small muted">舒適溫度指的是沒穿衣服、走動做事時覺得舒服的溫度，一般人約 22～26 度；睡覺時靜止不動，網頁會自動往上加 6 度（約 28～32 度）。衣物保暖度＝穿上後能抵多少度，整套來看：短袖短褲約 2～3、長袖長褲約 3～4.5、再加外套約 5～7、冬天整套厚衣約 10～14、極地裝約 25～30。</p>
+    <p class="small muted">舒適溫度指的是沒穿衣服、走動做事時覺得舒服的溫度，一般人約 22～26 度；睡覺時靜止不動，網頁會自動往上加 6 度（約 28～32 度）。</p>
+    <div class="grid2">
+      <label data-tip="一行一件，會自動配對預設物品（內衣褲、長袖上衣、長褲、毛衣、厚大衣……），保暖度自動加總。">起始穿著（一行一件）<textarea id="c_wear" rows="3"></textarea></label>
+      <label data-tip="一行一樣，寫「名稱 數量」，例：清水 750（毫升）、麵包 2。能配對預設物品的會自動帶入重量和數值，之後可以在物品清單改。">隨身物品（名稱 數量）<textarea id="c_carry" rows="3"></textarea></label>
+    </div>
     <label>個性（用短的行為句，一行一句）<textarea id="c_personality" rows="3" placeholder="例：被逼急就開玩笑帶過&#10;不輕易相信陌生人"></textarea></label>
     <label>背景與經歷<textarea id="c_background" rows="3"></textarea></label>
     <label>說話方式<textarea id="c_speech" rows="2" placeholder="例：話很少，習慣用「嗯」回答"></textarea></label>
@@ -112,6 +114,7 @@
       </section>
       <section class="card" id="statusCard"></section>
       <section class="card small" id="charCard"></section>
+      <section class="card small" id="invCard"></section>
       <section class="card">
         <div class="row gap wrap">
           <button class="ghost" onclick="exportSave()">匯出存檔</button>
@@ -169,21 +172,39 @@
             <select id="t_unit"><option>分鐘</option><option>小時</option><option>天</option></select>
           </label>
           <label>環境氣溫（°C）<input id="t_temp" type="number" step="0.5"></label>
-          <label>飢餓（吃東西填正數）<input id="t_hunger" type="number" value="0"></label>
-          <label>口渴（喝水填正數）<input id="t_thirst" type="number" value="0"></label>
+          <label>飢餓（物品以外吃到的）<input id="t_hunger" type="number" value="0"></label>
+          <label>口渴（物品以外喝到的）<input id="t_thirst" type="number" value="0"></label>
           <label class="t_notsleep">活動強度
             <select id="t_int"><option>輕</option><option>中</option><option>重</option><option>極重</option></select>
           </label>
           <label class="t_notsleep">其他體力變化<input id="t_stamina" type="number" value="0"></label>
           <label>血量（受傷填負數）<input id="t_hp" type="number" value="0"></label>
+          <label class="t_sleep">睡的地方<select id="t_bedPick" onchange="if (this.value !== '') $('t_bed').value = this.value"></select></label>
+          <label class="t_sleep">蓋的東西<select id="t_coverPick" onchange="if (this.value !== '') $('t_cover').value = this.value"></select></label>
           <label class="t_sleep">寢具舒適度（0～10）<input id="t_bed" type="number" step="0.5" value="2"></label>
           <label class="t_sleep">蓋的被子保暖度<input id="t_cover" type="number" step="0.5" value="0"></label>
           <label class="t_sleep">被弄醒（睡幾小時後，可空白）<input id="t_wake" type="number" step="0.1"></label>
-          <label>衣物保暖下限<input id="t_wmin" type="number" step="0.5"></label>
-          <label>衣物保暖上限<input id="t_wmax" type="number" step="0.5"></label>
         </div>
         <p class="small muted t_sleep">睡多久由網頁算，角色沒辦法自己決定。</p>
+        <div id="turnItems" class="turnItems"></div>
         <div class="row gap"><button onclick="applyTurn()">套用</button><button class="ghost" onclick="resetTurnForm()">清空</button><button class="ghost" onclick="closeModal('turnModal')">關閉</button></div>
+  </div>
+</div>
+
+<div id="invModal" class="modal hidden" onclick="if (event.target === this) closeModal('invModal')">
+  <div class="modalBox">
+    <h3>物品</h3>
+    <p class="small" id="invHead"></p>
+    <div id="invList"></div>
+    <div class="row gap wrap" style="margin-top:8px">
+      <select id="invPreset" style="width:auto"></select>
+      <input id="invPresetQty" type="number" step="0.1" value="1" style="width:90px">
+      <button class="ghost" onclick="addPreset()">加入預設物品</button>
+      <button class="ghost" onclick="openItemForm()">自訂物品</button>
+    </div>
+    <div id="itemForm" class="itemForm hidden"></div>
+    <p class="small muted">吃、喝、穿脫會加進回合表，按「套用」時才算（這段時間也要算進去）。加入、編輯、丟掉是直接改。</p>
+    <div class="row gap"><button class="ghost" onclick="closeModal('invModal')">關閉</button></div>
   </div>
 </div>
 
@@ -207,5 +228,6 @@
 <div id="toast" class="toast hidden"></div>
 
 <script src="app.js"></script>
+<script src="items.js"></script>
 </body>
 </html>

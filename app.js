@@ -135,7 +135,8 @@ ${idea}
 感知：
 魅力：
 舒適溫度：（沒穿衣服、走動做事時覺得舒服的溫度，一般人約 22～26，怕冷的人往上移，怕熱的往下移）
-衣物保暖：（身上整套衣物能抵多少度，寫下限～上限。參考：短袖短褲約 2～3、長袖長褲約 3～4.5、再加外套約 5～7、冬天整套厚衣約 10～14、極地裝約 25～30）
+穿著：（身上穿的衣服，用；分隔。盡量用常見名稱：內衣褲、短袖上衣、長袖上衣、短褲、長褲、毛衣、薄外套、厚大衣、羽絨外套、毛帽、手套、斗篷）
+隨身物品：（帶著的東西，寫「名稱 數量」，用；分隔。水用毫升，例：清水 750；麵包 2；小刀 1）
 個性：（短的具體行為句，例「被逼急就開玩笑帶過」，用；分隔）
 背景：
 說話方式：`;
@@ -171,7 +172,8 @@ function applySetupReply() {
   if (f['開始時間']) { const m = f['開始時間'].match(/(\d{1,2})[:：](\d{2})/); if (m) { $('s_time').value = m[1].padStart(2, '0') + ':' + m[2]; n++; } }
   if (f['個性']) { $('c_personality').value = f['個性'].split(/[；;]/).map(s => s.trim()).filter(Boolean).join('\n'); n++; }
   const c = parseRange(f['舒適溫度']); if (c) { $('c_clow').value = c[0]; $('c_chigh').value = c[1]; n++; }
-  const w = parseRange(f['衣物保暖']); if (w) { $('c_wmin').value = w[0]; $('c_wmax').value = w[1]; n++; }
+  if (f['穿著']) { $('c_wear').value = f['穿著'].split(/[；;、]/).map(s => s.trim()).filter(Boolean).join('\n'); n++; }
+  if (f['隨身物品']) { $('c_carry').value = f['隨身物品'].split(/[；;、]/).map(s => s.trim()).filter(Boolean).join('\n'); n++; }
   $('s_msg').textContent = n ? `填好 ${n} 個欄位，請檢查一下。` : '讀不到格式，請確認 AI 有照格式回覆。';
 }
 
@@ -186,12 +188,13 @@ function createStory() {
     name, height: v('c_height'), weight: v('c_weight'),
     attr: { 力量: v('c_str'), 敏捷: v('c_dex'), 體質: con, 智力: v('c_int'), 感知: v('c_wis'), 魅力: v('c_cha') },
     comfortLow: v('c_clow'), comfortHigh: v('c_chigh'),
-    warmMin: v('c_wmin'), warmMax: v('c_wmax'),
+    warmMin: 0, warmMax: 0,
     personality: $('c_personality').value.trim(),
     background: $('c_background').value.trim(),
     speech: $('c_speech').value.trim(),
     hp: max, hunger: max, thirst: max, stamina: max, fatigue: 0, bodyTemp: 0, groggyUntil: -1, dead: false,
   };
+  setupItems(char);
   cur = {
     id: 's' + Date.now(), title: $('s_title').value.trim() || name + '的故事',
     person: $('s_person').value, world: $('s_world').value.trim(), startDate: $('s_date').value.trim(),
@@ -201,7 +204,7 @@ function createStory() {
   save(); undoStack = []; enterPlay();
 }
 
-function openStory(id) { cur = stories[id]; if (cur.char.fatigue > RATES.fatigueMax) cur.char.fatigue = RATES.fatigueMax; undoStack = []; enterPlay(); }
+function openStory(id) { cur = stories[id]; migrateItems(cur.char); if (cur.char.fatigue > RATES.fatigueMax) cur.char.fatigue = RATES.fatigueMax; undoStack = []; enterPlay(); }
 function enterPlay() { showPage('play'); setMode('角色'); resetTurnForm(); renderAll(); }
 
 // ---------- 時間與計算 ----------
@@ -279,7 +282,7 @@ function sleepQuality(c, bed) {
 }
 
 // ---------- 主畫面 ----------
-function renderAll() { renderStatus(); renderLog(); }
+function renderAll() { renderStatus(); renderLog(); renderSideInv(); }
 
 function bar(label, val, max, color, tip) {
   const pct = max > 0 ? clamp(val / max * 100, 0, 100) : 0;
@@ -352,16 +355,14 @@ const TURN_TIPS = {
   t_type: '一般：做事、移動。休息：只回體力。睡覺：疲勞和體力都回，睡多久由網頁算。',
   t_dur: '這段花了多久。很短的事用分鐘，長一點用小時，天多半只有任務類會用到。可以有小數。',
   t_temp: '現在環境幾度。改了之後，冷熱照新的氣溫算。',
-  t_hunger: '這段吃東西恢復多少。1 點約 67 大卡：一碗飯約 3、一頓正餐約 10、一整天的飯量約 36。',
-  t_thirst: '這段喝水恢復多少。1 點約 40 毫升：一杯水約 6、一公升約 25、一整天的水量約 72。',
+  t_hunger: '身上物品以外吃到的（別人請的、當場摘來吃掉的）。吃身上的東西請用物品清單的「吃」，網頁會自己算。1 點約 67 大卡：一碗飯約 3、一頓正餐約 10、一整天的飯量約 36。',
+  t_thirst: '身上物品以外喝到的。喝身上的水請用物品清單的「喝」。1 點約 40 毫升：一杯水約 6、一公升約 25、一整天的水量約 72。',
   t_int: '輕：坐著、手工、慢走，可以做一整天。中：趕路、搬東西，約 2.5 小時用完體力。重：鏟土、爬坡、扛重物，約 30 分鐘。極重：衝刺、打架，約 10 分鐘。',
   t_stamina: '強度以外的特殊體力變化，平常填 0。',
   t_hp: '受傷填負數，傷好了填正數。',
   t_bed: '睡的地方舒不舒服，影響睡眠品質。地面 1、草堆 3、睡袋 5、普通床 7、好床 9。',
   t_cover: '蓋的東西能抵多少度，只在睡覺時算，熱了可以踢開。薄毯約 5、普通棉被約 10、厚棉被約 15～20、羽絨睡袋約 15～30。',
   t_wake: '被鬧鐘、別人或環境弄醒，就填睡了幾小時後醒。空白＝自然醒。',
-  t_wmin: '身上整套衣物最少能抵多少度（再怎麼脫、扇風也低不過這個）。',
-  t_wmax: '身上整套衣物最多能抵多少度。短袖短褲約 2～3、長袖長褲約 3～4.5、加外套約 5～7、冬天整套厚衣約 10～14。',
 };
 function initTips() {
   for (const id in TURN_TIPS) { const el = $(id); if (el && el.closest('label')) el.closest('label').dataset.tip = TURN_TIPS[id]; }
@@ -450,14 +451,17 @@ function buildTurnPrompt(action, actMode) {
 【狀態】
 類型：一般（或 休息、睡覺）
 耗時：數字 加 分鐘、小時 或 天（睡覺不用填，網頁會算。走路參考：平路每小時約 5 公里，沒有路約 4 公里，每爬升 600 公尺多加 1 小時）
-飢餓：這段吃東西恢復多少，沒吃填 0（滿是 ${r1(mx.hunger)}；參考：1 點約 67 大卡，一碗飯約 3、一頓正餐約 10、一整天的飯量約 36）
-口渴：這段喝水恢復多少，沒喝填 0（滿是 ${r1(mx.thirst)}；參考：1 點約 40 毫升，一杯水約 6、一公升約 25、一整天的水量約 72）
+用掉：身上的東西被吃掉、喝掉、用掉、丟掉多少，寫「名稱 數量」，多樣用；分隔，沒有填 無（食物和水寫在這裡，網頁會自己算飢餓口渴，水用毫升）
+獲得：拿到的新東西，多樣用；分隔，每樣寫「名稱｜數量｜單位｜每單位重量公斤｜類型｜數值」。類型：食物（數值填每單位大卡）、飲水（數量用毫升，數值填 乾淨 或 不乾淨）、衣物（數值填保暖 下限～上限）、寢具（數值填 舒適度／保暖度）、工具、火源、燃料、光源、醫療、容器、無。例：野莓｜30｜顆｜0.003｜食物｜4。沒有填 無
+穿脫：換穿衣服時填，例「穿上 毛衣；脫下 薄外套」，沒有填 無
+飢餓：只填身上物品以外吃到的（別人請的、當場摘來吃掉的），沒有填 0（滿是 ${r1(mx.hunger)}；參考：1 點約 67 大卡，一碗飯約 3、一頓正餐約 10、一整天的飯量約 36）
+口渴：只填身上物品以外喝到的，沒有填 0（滿是 ${r1(mx.thirst)}；參考：1 點約 40 毫升，一杯水約 6、一公升約 25、一整天的水量約 72）
 強度：這段主要的活動強度，輕、中、重、極重 選一個（輕＝坐著、手工、慢走；中＝趕路、搬東西；重＝鏟土、爬坡、扛重物；極重＝衝刺、打架）。網頁會照強度和耗時算體力
 體力：強度以外的額外體力變化，沒有填 0（滿是 ${r1(mx.stamina)}）
 血量：受傷填負數，沒有填 0（滿是 ${r1(mx.hp)}）
 氣溫：現在環境幾度（數字）
-寢具：睡覺才填，0～10（${BED_REF}）
-被子：睡覺才填，蓋的東西能抵多少度，沒蓋填 0（${COVER_REF}）
+寢具：睡覺才填，睡的地方舒適度 0～10（${BED_REF}；身上有睡墊、睡袋就照它的數值）
+被子：睡覺才填，蓋的東西能抵多少度，沒蓋填 0（${COVER_REF}；身上有毯子、睡袋就照它的數值）
 【狀態結束】
 
 【世界觀】
@@ -473,6 +477,9 @@ ${clockText(cur.clock)}，氣溫 ${cur.temp} 度。
 ${need('飢餓', c.hunger, mx.hunger)}、${need('口渴', c.thirst, mx.thirst)}
 血量 ${r1(c.hp)}／${r1(mx.hp)}，體力 ${r1(c.stamina)}／${r1(mx.stamina)}，疲勞：${FATIGUE_NAMES[fatigueStage(c)]}，冷熱：${tempWord(c.bodyTemp)}
 ${c.groggyUntil > cur.clock ? '剛睡醒，還有點昏沉。\n' : ''}${c.dead ? '角色已經死亡。\n' : ''}
+【身上的東西】
+${invForPrompt(c)}
+
 【最近發生的事】
 ${recent || '（故事剛開始）'}
 
@@ -557,7 +564,7 @@ function copyAgain() { tryCopy($('promptText').value); }
 function closePrompt() { closeModal('promptModal'); }
 function openModal(id) { $(id).classList.remove('hidden'); }
 function closeModal(id) { $(id).classList.add('hidden'); }
-function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm(); openModal('turnModal'); }
+function openTurn(msg) { $('turnMsg').textContent = msg || ''; refreshTurnForm(); bedOptions(); renderTurnItems(); openModal('turnModal'); }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   const open = ['promptModal', 'pasteModal', 'turnModal'].find(id => !$(id).classList.contains('hidden'));
@@ -591,6 +598,7 @@ function readAIReply() {
   set('飢餓', 't_hunger'); set('口渴', 't_thirst'); set('體力', 't_stamina');
   if (f['強度']) { const k = ['極重', '輕', '中', '重'].find(k => f['強度'].includes(k)); if (k) $('t_int').value = k; } set('血量', 't_hp');
   set('氣溫', 't_temp'); set('寢具', 't_bed'); set('被子', 't_cover');
+  parseItemLines(f);
   refreshTurnForm();
   openTurn('已經照 AI 的回覆填好，檢查後按「套用」。');
   return true;
@@ -603,7 +611,7 @@ function resetTurnForm() {
   ['t_hunger', 't_thirst', 't_stamina', 't_hp'].forEach(id => $(id).value = 0);
   $('t_int').value = '輕';
   $('t_temp').value = cur.temp; $('t_bed').value = 2; $('t_cover').value = 0; $('t_wake').value = '';
-  $('t_wmin').value = cur.char.warmMin; $('t_wmax').value = cur.char.warmMax;
+  resetTurnItems();
   refreshTurnForm();
 }
 function refreshTurnForm() {
@@ -626,13 +634,12 @@ function applyTurn() {
   const lines = [];
   // 環境與衣物先更新，再推進時間
   cur.temp = num($('t_temp').value, cur.temp);
-  c.warmMin = num($('t_wmin').value, c.warmMin);
-  c.warmMax = num($('t_wmax').value, c.warmMax);
   // 吃喝、受傷、用力（發生在這段裡，先加上去）
   const mx = maxes(c);
   const dh = num($('t_hunger').value), dt = num($('t_thirst').value), ds = num($('t_stamina').value), dhp = num($('t_hp').value);
   if (dh) { c.hunger = clamp(c.hunger + dh, 0, mx.hunger); lines.push(dh > 0 ? `${who}吃了東西，飢餓恢復了 ${r1(dh)}。` : `飢餓減少 ${r1(-dh)}。`); }
   if (dt) { c.thirst = clamp(c.thirst + dt, 0, mx.thirst); lines.push(dt > 0 ? `${who}喝了水，口渴恢復了 ${r1(dt)}。` : `口渴減少 ${r1(-dt)}。`); }
+  lines.push(...applyTurnItems(who));
   if (dhp) { c.hp = clamp(c.hp + dhp, 0, mx.hp); lines.push(dhp < 0 ? `${who}受了傷，血量減少 ${r1(-dhp)}。` : `${who}的傷好了一些，血量恢復 ${r1(dhp)}。`); if (c.hp <= 0) c.dead = true; }
 
   if (type === '睡覺') {

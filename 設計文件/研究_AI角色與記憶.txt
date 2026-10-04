@@ -66,6 +66,9 @@
 - 大規模調查：粗重工作的人睡太少或睡太多的比例都比較高。
 - 超級馬拉松：長時間用力加上沒睡，越跑越想睡、自覺越吃力，但分不出用力和缺眠各佔多少。
 
+【食物熱量】（2026-10-04 補查，預設物品用）
+- 白飯一碗（熟）約 205 大卡；蘋果一顆中型約 95；雞蛋一顆大約 72；肉乾每 100 克約 410；硬餅乾每 100 克約 393，一塊（約 7.5 公分見方）約 100。
+
 【來源】
 - https://tavernsprite.com/blog/sillytavern-character-card-best-practices/
 - https://aituts.com/sillytavern-guide/
@@ -104,3 +107,6 @@
 - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7904822/
 - https://www.sciencedirect.com/science/article/abs/pii/S1389945714002482
 - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11001838/
+- https://calceat.app/blog/calories-in-rice/
+- https://foods.fatsecret.com/calories-nutrition/usda/beef-jerky?portionid=62020&portionamount=100.000
+- https://theprepared.com/survival-skills/guides/hardtack/
