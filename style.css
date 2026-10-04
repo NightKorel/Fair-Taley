@@ -216,3 +216,6 @@ label[data-tip], .stat[data-tip] { cursor: default; }
 .moreMenu button { margin: 2px 0; text-align: left; border-color: transparent; }
 .moreMenu button:hover { border-color: var(--accent); }
 .putSel { width: auto; display: inline-block; margin: 0; padding: 1px 4px; font-size: 12px; }
+/* 輸入的選項按鈕 */
+.optRow { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin: 2px 0 4px; }
+.optRow .opt { margin: 0; padding: 1px 10px; font-size: 13px; border-radius: 12px; }

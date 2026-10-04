@@ -320,7 +320,28 @@ function sleepQuality(c, bed) {
 }
 
 // ---------- 主畫面 ----------
-function renderAll() { renderStatus(); renderLog(); renderSideInv(); renderSumCard(); renderGoalCard(); renderLoreCard(); renderCharPick(); }
+function renderAll() { renderStatus(); renderLog(); renderSideInv(); renderSumCard(); renderGoalCard(); renderLoreCard(); renderCharPick(); renderOptions(); }
+
+// ---------- 輸入的選項按鈕（設計 2026-10-02：自由打字和選項按鈕兩種都有；做 2026-10-04） ----------
+// AI 在狀態區塊「選項」寫 3 個接下來合理的行動，顯示成按鈕；按了只是填進輸入框，可以改了再送。
+// 沒有 AI 給的選項時，顯示幾個常用的行動。
+const BASIC_OPTIONS = ['看看四周', '休息一下', '找吃的', '找水', '找地方過夜'];
+function parseOptions(f) {
+  const v = (f['選項'] || '').trim();
+  cur.options = v && !/^(無|沒有)$/.test(v) ? v.split(/[；;]/).map(x => x.replace(/^\s*\d+[.、．)]\s*/, '').trim()).filter(Boolean).slice(0, 5) : [];
+}
+function renderOptions() {
+  if (!cur) return;
+  const list = cur.options && cur.options.length ? cur.options : BASIC_OPTIONS;
+  const ai = !!(cur.options && cur.options.length);
+  $('optRow').innerHTML = `<span class="small muted" data-tip="${ai ? 'AI 建議的接下來可以做的事。' : '常用的行動。AI 回覆後會換成它建議的選項。'}按了只會填進輸入框，可以改了再送。">${ai ? 'AI 建議：' : '常用：'}</span>` +
+    list.map((o, k) => `<button class="ghost small opt" onclick="useOption(${k})">${esc(o)}</button>`).join('');
+}
+function useOption(k) {
+  const list = cur.options && cur.options.length ? cur.options : BASIC_OPTIONS;
+  if (mode !== '角色') setMode('角色');
+  $('input').value = list[k]; $('input').focus();
+}
 
 function bar(label, val, max, color, tip) {
   const pct = max > 0 ? clamp(val / max * 100, 0, 100) : 0;
@@ -544,6 +565,7 @@ function buildTurnPrompt(action, actMode) {
 生病：這段開始生病才寫「病名｜種類｜原因」，種類選 感冒、拉肚子、發燒、傷口感染 裡最像的一個，多個用；分隔，沒有填 無
 治療：這段有好好處理的病（吃藥、清洗包紮傷口、好好休養）寫病名，沒有填 無
 痊癒：已經好了的病寫病名（網頁也會照天數算自然好），沒有填 無
+選項：寫 3 個${c.name}接下來合理的行動給玩家參考，每個一句短句，用；分隔（例：沿著溪往下游走；先生火取暖；回岩洞找老周）
 目標：這段有人交付角色一件事、或角色自己決定要做到某件事時才寫，多條用；分隔，每條寫「內容｜期限｜大目標」。期限寫從現在起多久（例：3 天、5 小時），沒有填 無；大目標是要掛在哪條進行中的目標底下，寫那條的內容，沒有填 無。例：找到能擋風的地方｜無｜活過冬天。沒有新目標填 無
 目標結果：進行中的目標這段完成、失敗或放棄了才寫，每條寫「內容｜完成」（或 失敗、放棄），多條用；分隔，沒有填 無
 設定：這段第一次出現、有名字、之後可能再出現的人事物才寫（地點、人物、組織、物品、規則、事件），多條用；分隔，每條寫「名稱｜類別｜關鍵字｜內容｜相關」。類別選 地點、人物、組織、物品、規則、事件；關鍵字寫名字和別稱，用、分隔，用專有名詞，不要用常見字；內容 3～5 句，只寫事實，名稱寫在內容裡，句子裡不要用；和｜；相關寫有關的其他設定名稱，用、分隔，沒有填 無。例：老周｜人物｜老周、周獵戶｜老周是住在北坡岩洞的老獵人，六十多歲，左腿跛。他熟悉山裡的路，不信任外人。｜北坡岩洞。已經登記的、路人、只出現一次的不寫，主角也不寫，沒有填 無
@@ -562,7 +584,7 @@ function copyTurnPrompt() {
   const text = $('input').value.trim();
   if (!text) { toast('先寫這回合要做什麼'); return; }
   const p = buildTurnPrompt(text, mode);
-  pushUndo(); addLog(mode, text); $('input').value = ''; save(); renderLog();
+  pushUndo(); addLog(mode, text); $('input').value = ''; cur.options = []; save(); renderLog(); renderOptions();
   copyText(p, '貼給 AI，複製 AI 的整段回覆後回來按「貼上 AI 回覆」。');
 }
 
@@ -719,6 +741,7 @@ function readAIReply() {
   parseCompanions(f);
   parseIlls(f);
   parseArc(f);
+  parseOptions(f);
   refreshTurnForm();
   openTurn('已經照 AI 的回覆填好，檢查後按「套用」。');
   if (checkSubvert(f)) return false;

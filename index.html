@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>存活模擬</title>
-<link rel="stylesheet" href="style.css?v=0.0.23">
+<link rel="stylesheet" href="style.css?v=0.0.24">
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.23</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.24</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -141,6 +141,7 @@
           <select id="charPick" class="hidden" style="width:auto;margin:0" onchange="setActive(this.value)" data-tip="換成操作哪個角色。分開行動的角色切過去時，要先補算分開的那段時間。"></select>
           <span class="small muted" id="modeHint"></span>
         </div>
+        <div id="optRow" class="optRow"></div>
         <textarea id="input" rows="3"></textarea>
         <div class="row gap wrap">
           <button onclick="copyTurnPrompt()">複製提示詞給 AI</button>
@@ -470,12 +471,12 @@
 <div id="tip" class="tip hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=0.0.23"></script>
-<script src="items.js?v=0.0.23"></script>
-<script src="story.js?v=0.0.23"></script>
-<script src="goals.js?v=0.0.23"></script>
-<script src="lore.js?v=0.0.23"></script>
-<script src="chars.js?v=0.0.23"></script>
-<script src="ills.js?v=0.0.23"></script>
+<script src="app.js?v=0.0.24"></script>
+<script src="items.js?v=0.0.24"></script>
+<script src="story.js?v=0.0.24"></script>
+<script src="goals.js?v=0.0.24"></script>
+<script src="lore.js?v=0.0.24"></script>
+<script src="chars.js?v=0.0.24"></script>
+<script src="ills.js?v=0.0.24"></script>
 </body>
 </html>
