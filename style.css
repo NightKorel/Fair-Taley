@@ -215,3 +215,4 @@ label[data-tip], .stat[data-tip] { cursor: default; }
 }
 .moreMenu button { margin: 2px 0; text-align: left; border-color: transparent; }
 .moreMenu button:hover { border-color: var(--accent); }
+.putSel { width: auto; display: inline-block; margin: 0; padding: 1px 4px; font-size: 12px; }

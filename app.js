@@ -238,7 +238,7 @@ function createStory() {
   save(); undoStack = []; enterPlay();
 }
 
-function openStory(id) { cur = linkChars(stories[id]); cur.chars.forEach(c => { migrateItems(c); if (c.fatigue > RATES.fatigueMax) c.fatigue = RATES.fatigueMax; }); undoStack = []; enterPlay(); }
+function openStory(id) { cur = linkChars(stories[id]); cur.chars.forEach(c => { migrateItems(c); migrateBoxes(c); if (c.fatigue > RATES.fatigueMax) c.fatigue = RATES.fatigueMax; }); undoStack = []; enterPlay(); }
 function enterPlay() { showPage('play'); setMode('角色'); resetTurnForm(); renderAll(); }
 
 // ---------- 時間與計算 ----------
@@ -519,7 +519,8 @@ function buildTurnPrompt(action, actMode) {
 類型：一般（或 休息、睡覺）
 耗時：數字 加 分鐘、小時 或 天（睡覺不用填，網頁會算。走路參考：平路每小時約 5 公里，沒有路約 4 公里，每爬升 600 公尺多加 1 小時）
 用掉：身上的東西被吃掉、喝掉、用掉、丟掉多少，寫「名稱 數量」，多樣用；分隔，沒有填 無（食物和水寫在這裡，網頁會自己算飢餓口渴，水用毫升）
-獲得：拿到的新東西，多樣用；分隔，每樣寫「名稱｜數量｜單位｜每單位重量公斤｜類型｜數值」。類型：食物（數值填每單位大卡）、飲水（數量用毫升，數值填 乾淨 或 不乾淨）、衣物（數值填保暖 下限～上限）、寢具（數值填 舒適度／保暖度）、工具、火源、燃料、光源、醫療、容器、無。例：野莓｜30｜顆｜0.003｜食物｜4。沒有填 無
+獲得：拿到的新東西，多樣用；分隔，每樣寫「名稱｜數量｜單位｜每單位重量公斤｜類型｜數值」。類型：食物（數值填每單位大卡）、飲水（數量用毫升，數值填 乾淨 或 不乾淨）、衣物（數值填保暖 下限～上限）、寢具（數值填 舒適度／保暖度）、容器（數值填 內部 長×寬×高公分／軟或硬／防漏或不防漏／防水或不防水／背負、掛身、手提或抱持）、工具、火源、燃料、光源、醫療、無。例：野莓｜30｜顆｜0.003｜食物｜4。沒有填 無
+放進：把東西放進容器或拿出來時寫「物品名稱｜容器名稱」，拿出來寫「物品名稱｜隨身」，多樣用；分隔，沒有填 無（網頁會算放不放得下；液體要放防漏的容器）
 穿脫：換穿衣服時填，例「穿上 毛衣；脫下 薄外套」，沒有填 無
 離場：已登記的生物這段死了、走遠了、被吃掉、不會再回來的，寫牠的名稱，多隻用；分隔，沒有填 無
 生物：這段第一次出場的動物或生物，多隻用；分隔，每隻寫「名稱｜身長或肩高（公分）｜體重（公斤）｜簡短特徵」。例：灰狼｜肩高 80｜48｜瘦，左耳有缺口。已登記過的不用再寫，沒有填 無
