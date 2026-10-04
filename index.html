@@ -51,7 +51,7 @@
     <textarea id="s_idea" rows="3" placeholder="例：1930 年代東北林區，一個不太會說話的年輕獵人，深秋清晨在山裡迷路。"></textarea>
     <div class="row gap"><button class="ghost" onclick="copySetupPrompt()">複製提示詞</button></div>
     <textarea id="s_reply" rows="4" placeholder="把 AI 的回覆貼在這裡"></textarea>
-    <div class="row gap"><button class="ghost" onclick="applySetupReply()">讀取 AI 回覆，填入欄位</button><span id="s_msg" class="small"></span></div>
+    <div class="row gap wrap"><button onclick="pasteSetup()">一鍵貼上並填入</button><button class="ghost" onclick="applySetupReply()">讀取 AI 回覆，填入欄位</button><span id="s_msg" class="small"></span></div>
   </section>
 
   <section class="card">
@@ -134,6 +134,7 @@
         <textarea id="input" rows="3"></textarea>
         <div class="row gap wrap">
           <button onclick="copyTurnPrompt()">複製提示詞給 AI</button>
+          <button onclick="pasteAndFinish()">一鍵貼上並完成</button>
           <button class="ghost" onclick="recordOnly()">只記錄（不用 AI）</button>
         </div>
         <details id="pasteBox">
@@ -187,6 +188,12 @@
     <textarea id="promptText" rows="12" readonly></textarea>
     <div class="row gap"><button onclick="copyAgain()">複製</button><button class="ghost" onclick="closePrompt()">關閉</button></div>
   </div>
+</div>
+
+<div id="clipBanner" class="clipBanner hidden">
+  <span>剪貼簿裡好像有 AI 的回覆</span>
+  <button id="clipBtn" onclick="clipBannerGo()">貼上並完成這回合</button>
+  <button class="ghost" onclick="hideClipBanner()">不用</button>
 </div>
 
 <div id="toast" class="toast hidden"></div>
