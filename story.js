@@ -1,7 +1,9 @@
 // 存活模擬：劇情摘要（遞迴摘要）、隨時編輯角色與故事設定
 
-const SUMMARY_KEEP_RECENT = 6;   // 最近幾段不歸納，留原文給 AI
-const SUMMARY_SUGGEST_AT = 24;   // 沒歸納的段落超過這個數，就提醒該歸納了
+// 玩家自己設（每個玩家用的 AI 能力不同）：最近幾段不歸納、超過幾段沒歸納就提醒
+const KEEP_MIN = 2;
+function keepRecent() { return Math.max(KEEP_MIN, cur.keepRecent ?? 6); }
+function remindAt() { return Math.max(keepRecent() + 2, cur.remindAt ?? 24); }
 
 // ---------- 劇情摘要 ----------
 // 研究（Wang 等 2023）：用「舊摘要＋新內容」寫出新摘要，長篇故事比較能前後一致。
@@ -10,7 +12,7 @@ function unsummarized() { return Math.max(0, cur.log.length - sumFrom()); }
 function entryText(e) { return `${e.type === '故事' ? '' : '（' + e.type + '）'}${e.text}`; }
 
 function buildSummaryPrompt() {
-  const end = Math.max(sumFrom(), cur.log.length - SUMMARY_KEEP_RECENT);
+  const end = Math.max(sumFrom(), cur.log.length - keepRecent());
   const fresh = cur.log.slice(sumFrom(), end).map(entryText).join('\n');
   return { end, text: `請幫我更新一篇小說的劇情摘要。這個摘要之後會附在每一段的提示詞裡，讓 AI 記得前面發生過什麼。
 
@@ -31,8 +33,19 @@ ${fresh || '（沒有）'}` };
 
 function openSummary() {
   $('sumText').value = cur.summary || '';
-  $('sumInfo').textContent = `已歸納到第 ${sumFrom()} 段，還有 ${unsummarized()} 段沒歸納（最近 ${SUMMARY_KEEP_RECENT} 段會保留原文）。`;
+  $('sumKeep').value = keepRecent(); $('sumRemind').value = remindAt();
+  $('sumInfo').textContent = `第 ${chapters().length + 1} 章。已歸納到第 ${sumFrom()} 段，還有 ${unsummarized()} 段沒歸納（最近 ${keepRecent()} 段會保留原文）。`;
+  renderChapters();
   openModal('sumModal');
+}
+function saveSumSettings() {
+  const k = Math.max(KEEP_MIN, Math.round(num($('sumKeep').value, 6)));
+  cur.keepRecent = k;
+  cur.remindAt = Math.max(k + 2, Math.round(num($('sumRemind').value, 24)));
+  $('sumKeep').value = cur.keepRecent; $('sumRemind').value = cur.remindAt;
+  save(); renderSumCard();
+  $('sumInfo').textContent = `第 ${chapters().length + 1} 章。已歸納到第 ${sumFrom()} 段，還有 ${unsummarized()} 段沒歸納（最近 ${keepRecent()} 段會保留原文）。`;
+  toast('設定已儲存');
 }
 function copySummaryPrompt() {
   const { end, text } = buildSummaryPrompt();
@@ -63,21 +76,21 @@ function saveSummary(fromAI) {
 }
 function markSummarized() {
   // 自己寫完摘要（沒有 AI）時，手動把目前為止的段落標成已歸納
-  const end = Math.max(sumFrom(), cur.log.length - SUMMARY_KEEP_RECENT);
+  const end = Math.max(sumFrom(), cur.log.length - keepRecent());
   cur.pendingSummaryEnd = end;
   saveSummary(true);
 }
 function renderSumCard() {
   if (!cur) return;
   const n = unsummarized();
-  const warn = n >= SUMMARY_SUGGEST_AT;
+  const warn = n > remindAt();
   $('sumCard').innerHTML = `<div class="row" style="justify-content:space-between"><span>劇情摘要</span><button class="ghost small" onclick="openSummary()">打開</button></div>
     <div class="small muted">出場生物 ${activeCreatures().length} 隻<a href="#" onclick="openCreatures();return false" style="margin-left:8px">查看</a></div>
-    <div class="small ${warn ? 'cond' : 'muted'}" data-tip="提示詞只附摘要和最近幾段原文。故事變長時把舊段落歸納進摘要，AI 才記得前面的事，提示詞也不會越來越長。">${cur.summary ? '' : '還沒有摘要。'}${n} 段還沒歸納${warn ? '，建議歸納了' : ''}</div>`;
+    <div class="small ${warn ? 'cond' : 'muted'}" data-tip="提示詞只附摘要和最近幾段原文。故事變長時把舊段落歸納進摘要，AI 才記得前面的事，提示詞也不會越來越長。">第 ${chapters().length + 1} 章・${cur.summary ? '' : '還沒有摘要・'}${n} 段還沒歸納${warn ? '，建議歸納了' : ''}</div>`;
 }
-// 給回合提示詞用：摘要＋摘要之後的段落（最多 10 段）
+// 給回合提示詞用：前面章節摘要＋本章摘要＋摘要之後的段落（最多 10 段，或玩家設的保留段數）
 function storySoFar() {
-  const recent = cur.log.slice(sumFrom()).slice(-10).map(entryText).join('\n');
+  const recent = cur.log.slice(sumFrom()).slice(-Math.max(10, keepRecent())).map(entryText).join('\n');
   return { summary: cur.summary || '', recent };
 }
 
@@ -286,4 +299,73 @@ function applyCheckFix() {
   parseItemLines(f); parseCreatures(f);
   closeModal('chkModal');
   openTurn('這是 AI 檢查後建議的修正（不花時間），看過再按「套用」。');
+}
+
+// ---------- 章節：換章時把這一章全部歸納成一章，之後除非玩家手動改，不再動 ----------
+function chapters() { if (!cur.chapters) cur.chapters = []; return cur.chapters; }
+function chaptersForPrompt() {
+  const list = chapters();
+  return list.length ? list.map((c, k) => `第 ${k + 1} 章${c.title ? '「' + c.title + '」' : ''}：\n${c.summary}`).join('\n\n') : '';
+}
+function buildChapterPrompt() {
+  const fresh = cur.log.slice(sumFrom()).map(entryText).join('\n');
+  return `這篇小說的第 ${chapters().length + 1} 章要結束了。請把這一章整理成一份章節摘要，之後會一直附在提示詞裡，讓 AI 記得這一章發生過什麼。
+
+規則：
+- 用繁體中文，${cur.person}。
+- 把「這一章目前的摘要」和「還沒歸納的段落」合在一起，寫成這一章完整的摘要。
+- 只留之後可能還會用到的事：出現過的人物和關係、去過的地方、做過的約定、受的傷、得到或失去的重要東西、角色想法和心境的轉變、還沒解決的事。
+- 用條列，一點一句，照時間順序，總長盡量在 500 字以內。
+- 第一行寫【章名】，下一行寫一個簡短的章名；接著寫【章節摘要】，下面是摘要本身。
+
+【這一章目前的摘要】
+${cur.summary || '（還沒有）'}
+
+【還沒歸納的段落】
+${fresh || '（沒有）'}`;
+}
+function copyChapterPrompt() {
+  if (!confirm(`結束第 ${chapters().length + 1} 章？這一章所有段落都會歸納成一份章節摘要，之後除非你手動改，不會再動。`)) return;
+  copyText(buildChapterPrompt(), '貼給 AI，複製 AI 的回覆後回來按「貼上章節摘要」。');
+  waitingFor = 'chapter';
+}
+async function pasteChapter() {
+  hideClipBanner();
+  const t = await readClip();
+  if (t === null) { toast('瀏覽器不讓網頁讀剪貼簿，請手動把章節摘要寫進框裡，再按「自己寫好，直接換章」'); return; }
+  if (!t.trim() || t === lastPrompt) { toast('剪貼簿裡還沒有 AI 的回覆'); return; }
+  waitingFor = null;
+  const title = (t.match(/[【\[]\s*章名\s*[】\]]\s*\n?\s*([^\n【\[]+)/) || [])[1] || '';
+  const sum = t.replace(/\*\*/g, '').replace(/^[\s\S]*?[【\[]\s*章節摘要\s*[】\]]\s*/, '').trim();
+  finishChapter(title.trim(), sum);
+}
+function finishChapterManual() {
+  // 沒有 AI：把框裡目前的摘要直接當成這一章的章節摘要
+  const sum = cleanSummary($('sumText').value);
+  if (!sum) { toast('先在框裡寫好這一章的摘要'); return; }
+  if (!confirm(`用框裡的摘要結束第 ${chapters().length + 1} 章？`)) return;
+  finishChapter(prompt('章名（可以空白）', '') || '', sum);
+}
+function finishChapter(title, sum) {
+  pushUndo();
+  chapters().push({ title, summary: sum, upTo: cur.log.length });
+  addLog('系統', `第 ${chapters().length} 章${title ? '「' + title + '」' : ''}結束。`);
+  cur.summary = '';
+  cur.summaryUpTo = cur.log.length;
+  save(); renderSumCard();
+  if (!$('sumModal').classList.contains('hidden')) openSummary();
+  toast(`第 ${chapters().length} 章已存好，開始第 ${chapters().length + 1} 章`);
+}
+function renderChapters() {
+  const list = chapters();
+  $('chList').innerHTML = list.length ? list.map((c, k) => `<details class="chapter"><summary>第 ${k + 1} 章${c.title ? '「' + esc(c.title) + '」' : ''}</summary>
+    <input id="chT${k}" value="${esc(c.title || '')}" placeholder="章名">
+    <textarea id="chS${k}" rows="6">${esc(c.summary)}</textarea>
+    <button class="ghost small" onclick="saveChapter(${k})">儲存這一章的修改</button></details>`).join('') : '<p class="muted small">還沒有結束的章節。</p>';
+}
+function saveChapter(k) {
+  pushUndo();
+  chapters()[k].title = $('chT' + k).value.trim();
+  chapters()[k].summary = $('chS' + k).value.trim();
+  save(); renderChapters(); toast(`第 ${k + 1} 章已儲存`);
 }

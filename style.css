@@ -60,6 +60,10 @@ a { color: var(--accent); }
 .version { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 4px; cursor: pointer; text-decoration: underline dotted; }
 .version:hover { color: var(--accent); }
 .chkText { white-space: pre-wrap; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 6px 0 10px; font-size: 14px; max-height: 30vh; overflow-y: auto; }
+label.inline { display: inline-flex; align-items: center; gap: 4px; margin: 0; color: var(--text); }
+label.inline input { display: inline-block; width: 64px; margin: 0 2px; padding: 2px 6px; }
+.chapter { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; margin: 6px 0; }
+.chapter input, .chapter textarea { margin: 4px 0; }
 .logText { font-size: 14px; max-height: 65vh; overflow-y: auto; margin-bottom: 8px; }
 .logDate { color: var(--accent); font-weight: 600; margin: 14px 0 6px; }
 .logDate:first-child { margin-top: 0; }

@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>存活模擬</title>
-<link rel="stylesheet" href="style.css?v=0.0.9">
+<link rel="stylesheet" href="style.css?v=0.0.10">
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.9</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.10</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -216,8 +216,13 @@
   <div class="modalBox">
     <h3>劇情摘要</h3>
     <p class="small muted" id="sumInfo"></p>
-    <p class="small muted">每段提示詞都會附上這份摘要和最近幾段原文。按「複製歸納提示詞」交給 AI，AI 會把舊摘要和新段落合成新摘要；也可以自己直接改。</p>
-    <textarea id="sumText" rows="12" placeholder="還沒有摘要"></textarea>
+    <p class="small muted">每段提示詞都會附上前面章節的摘要、這一章的摘要和最近幾段原文。按「複製歸納提示詞」交給 AI，AI 會把舊摘要和新段落合成新摘要；也可以自己直接改。</p>
+    <div class="row gap wrap small">
+      <label class="inline" data-tip="最近幾段永遠保留原文、不歸納。AI 記性好可以多留，記性差就少留。最少 2 段。">保留最近<input id="sumKeep" type="number" min="2" style="width:64px">段不歸納</label>
+      <label class="inline" data-tip="還沒歸納的段落超過這個數，左邊會提醒該歸納了。">超過<input id="sumRemind" type="number" style="width:64px">段沒歸納就提醒</label>
+      <button class="ghost small" onclick="saveSumSettings()">儲存設定</button>
+    </div>
+    <textarea id="sumText" rows="6" placeholder="還沒有摘要"></textarea>
     <div class="row gap wrap">
       <button onclick="copySummaryPrompt()">複製歸納提示詞</button>
       <button onclick="pasteSummary()">一鍵貼上摘要</button>
@@ -225,6 +230,14 @@
       <button class="ghost" onclick="markSummarized()" data-tip="不用 AI、自己寫完摘要時用：存下摘要，並把目前為止的舊段落標成已歸納。">儲存並標成已歸納</button>
       <button class="ghost" onclick="closeModal('sumModal')">關閉</button>
     </div>
+    <h3 style="margin-top:12px">章節</h3>
+    <p class="small muted">換章時，這一章所有段落會歸納成一份章節摘要存起來，之後除非你手動改，不會再動。</p>
+    <div class="row gap wrap">
+      <button onclick="copyChapterPrompt()">結束這一章（複製提示詞）</button>
+      <button onclick="pasteChapter()">貼上章節摘要</button>
+      <button class="ghost" onclick="finishChapterManual()" data-tip="不用 AI：把上面框裡的摘要直接當成這一章的章節摘要。">自己寫好，直接換章</button>
+    </div>
+    <div id="chList"></div>
   </div>
 </div>
 
@@ -307,8 +320,8 @@
 <div id="tip" class="tip hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=0.0.9"></script>
-<script src="items.js?v=0.0.9"></script>
-<script src="story.js?v=0.0.9"></script>
+<script src="app.js?v=0.0.10"></script>
+<script src="items.js?v=0.0.10"></script>
+<script src="story.js?v=0.0.10"></script>
 </body>
 </html>

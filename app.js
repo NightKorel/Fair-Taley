@@ -458,7 +458,7 @@ ${c.groggyUntil > cur.clock ? '剛睡醒，還有點昏沉。\n' : ''}${c.dead ?
 【身上的東西】
 ${invForPrompt(c)}
 ${creaturesForPrompt()}
-${summary ? '【前情摘要】\n' + summary + '\n\n' : ''}【最近發生的事】
+${chaptersForPrompt() ? '【前面的章節】\n' + chaptersForPrompt() + '\n\n' : ''}${summary ? '【本章前情摘要】\n' + summary + '\n\n' : ''}【最近發生的事】
 ${recent || '（故事剛開始）'}`;
 }
 
@@ -560,14 +560,14 @@ async function checkClipboard() {
   if (!t || !t.trim() || t === lastPrompt || t === lastPasted) return;
   const looksTurn = /[【\[]\s*狀態\s*[】\]]/.test(t);
   const looksSetup = /名字\s*[：:]/.test(t);
-  if ((waitingFor === 'turn' && (looksTurn || t.length > 30)) || (waitingFor === 'setup' && looksSetup) || (waitingFor === 'summary' && t.length > 20) || (waitingFor === 'check' && /問題/.test(t))) showClipBanner();
+  if ((waitingFor === 'turn' && (looksTurn || t.length > 30)) || (waitingFor === 'setup' && looksSetup) || (waitingFor === 'summary' && t.length > 20) || (waitingFor === 'check' && /問題/.test(t)) || (waitingFor === 'chapter' && /章節摘要|章名/.test(t))) showClipBanner();
 }
 function showClipBanner() {
   $('clipBanner').classList.remove('hidden');
-  $('clipBtn').textContent = waitingFor === 'setup' ? '貼上並填入欄位' : waitingFor === 'summary' ? '貼上並更新摘要' : waitingFor === 'check' ? '貼上檢查結果' : '貼上並完成這回合';
+  $('clipBtn').textContent = waitingFor === 'setup' ? '貼上並填入欄位' : waitingFor === 'summary' ? '貼上並更新摘要' : waitingFor === 'check' ? '貼上檢查結果' : waitingFor === 'chapter' ? '貼上章節摘要' : '貼上並完成這回合';
 }
 function hideClipBanner() { $('clipBanner').classList.add('hidden'); }
-function clipBannerGo() { waitingFor === 'setup' ? pasteSetup() : waitingFor === 'summary' ? pasteSummary() : waitingFor === 'check' ? pasteCheck() : pasteAndFinish(); }
+function clipBannerGo() { waitingFor === 'setup' ? pasteSetup() : waitingFor === 'summary' ? pasteSummary() : waitingFor === 'check' ? pasteCheck() : waitingFor === 'chapter' ? pasteChapter() : pasteAndFinish(); }
 window.addEventListener('focus', checkClipboard);
 document.addEventListener('visibilitychange', checkClipboard);
 
