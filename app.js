@@ -571,6 +571,13 @@ function clipBannerGo() { waitingFor === 'setup' ? pasteSetup() : waitingFor ===
 window.addEventListener('focus', checkClipboard);
 document.addEventListener('visibilitychange', checkClipboard);
 
+// 輸入框下面的「更多」選單：點按鈕開關，點選單裡的項目或外面就收起來
+function toggleMore(e) {
+  if (e) e.stopPropagation();
+  $('moreMenu').classList.toggle('hidden');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.more')) $('moreMenu').classList.add('hidden'); });
+
 function copyAgain() { tryCopy($('promptText').value); }
 function closePrompt() { closeModal('promptModal'); }
 function openModal(id) { $(id).classList.remove('hidden'); }
