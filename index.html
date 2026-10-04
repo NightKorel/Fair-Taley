@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>存活模擬</title>
-<link rel="stylesheet" href="style.css?v=0.0.17">
+<link rel="stylesheet" href="style.css?v=0.0.18">
 </head>
 <body>
 <header class="topbar">
-  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.17</span></h1>
+  <h1 id="title"><span onclick="showHome()">存活模擬</span> <span class="version" onclick="openChangelog()" data-tip="按這裡看更新日誌">v0.0.18</span></h1>
   <div class="topbar-right">
     <span id="storyName"></span>
     <button class="ghost" onclick="toggleTheme()" title="切換深色／米色">🌓</button>
@@ -115,6 +115,7 @@
       <section class="card" id="statusCard"></section>
       <section class="card small" id="charCard"></section>
       <section class="card small" id="goalCard"></section>
+      <section class="card small" id="loreCard"></section>
       <section class="card small" id="invCard"></section>
       <section class="card small" id="sumCard"></section>
       <section class="card">
@@ -340,6 +341,31 @@
   </div>
 </div>
 
+<div id="loreModal" class="modal hidden" onclick="if (event.target === this) closeModal('loreModal')">
+  <div class="modalBox">
+    <h3>世界設定集</h3>
+    <p class="small muted">記 AI 不知道、或會猜錯的東西。跟現實一樣的不用記；跟現實不同的地方，和故事裡有名字、之後可能再出現的人事物才記。路人、只出現一次的不用記。</p>
+    <label data-tip="每回合都會附給 AI。寫年代、地點、跟現實主要的差異；確認過的顛覆世界觀也會加在這裡。">世界觀（常駐，每回合都附）<textarea id="lr_world" rows="3"></textarea></label>
+    <button class="ghost small" onclick="saveLoreWorld()">儲存世界觀</button>
+    <div id="lorePend"></div>
+    <h3 style="margin-top:10px">條目（故事提到關鍵字才附）</h3>
+    <p class="small muted">最近的段落、這回合的行動、進行中的目標提到名稱或關鍵字，就會附給 AI，也會帶出寫在「相關」裡的條目。排越前面越重要，可以按 ↑ 往前移。</p>
+    <div id="loreList"></div>
+    <div class="itemForm">
+      <h3 id="loreFormTitle">新增條目</h3>
+      <div class="grid2">
+        <label>名稱<input id="lr_name" placeholder="例：北坡岩洞"></label>
+        <label>類別<select id="lr_cat"><option>地點</option><option>人物</option><option>組織</option><option>物品</option><option>規則</option><option>事件</option></select></label>
+      </div>
+      <label data-tip="名字和別稱，用、分隔。用專有名詞，別用「城市」「山」這種常見字，不然一直亂觸發。名稱本身一定算關鍵字，不用重寫。">關鍵字（用、分隔）<input id="lr_keys" placeholder="例：岩洞、老周的洞"></label>
+      <label data-tip="3～5 句，只寫事實，名稱要寫在內容裡（AI 看不到標題）。">內容<textarea id="lr_text" rows="3" placeholder="例：北坡岩洞在北坡半山腰，洞口朝南、能擋北風，裡面能睡三四個人。老周住在這裡。"></textarea></label>
+      <label data-tip="有關的其他條目名稱，用、分隔。這條被觸發時，相關的條目也會一起附上。">相關（用、分隔）<input id="lr_rel" placeholder="例：老周"></label>
+      <div class="row gap"><button id="lr_save" onclick="saveLoreForm()">登記</button><button id="lr_cancel" class="ghost hidden" onclick="loreForm()">取消</button></div>
+    </div>
+    <div class="row gap"><button class="ghost" onclick="closeModal('loreModal')">關閉</button></div>
+  </div>
+</div>
+
 <div id="kindModal" class="modal hidden" onclick="if (event.target === this) closeModal('kindModal')">
   <div class="modalBox">
     <h3>這是哪一種回覆？</h3>
@@ -373,9 +399,10 @@
 <div id="tip" class="tip hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="app.js?v=0.0.17"></script>
-<script src="items.js?v=0.0.17"></script>
-<script src="story.js?v=0.0.17"></script>
-<script src="goals.js?v=0.0.17"></script>
+<script src="app.js?v=0.0.18"></script>
+<script src="items.js?v=0.0.18"></script>
+<script src="story.js?v=0.0.18"></script>
+<script src="goals.js?v=0.0.18"></script>
+<script src="lore.js?v=0.0.18"></script>
 </body>
 </html>

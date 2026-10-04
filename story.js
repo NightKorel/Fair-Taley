@@ -383,7 +383,7 @@ function confirmSubvert() {
   else toast('已寫進世界觀，檢查回合表後按「套用」');
 }
 function rejectSubvert() {
-  subvertPending = null;
+  subvertPending = null; loreNew = false;
   closeModal('svModal'); closeModal('turnModal');
   undoTurn(); // 回到 AI 這段故事進來之前
   const last = cur.log[cur.log.length - 1];
