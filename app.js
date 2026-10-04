@@ -24,7 +24,14 @@ const RATES = {
   tempRecoverPerHour: 2,  // 回到舒適範圍時每小時回正多少
   tempDanger: 7,          // 體溫偏到這裡開始扣血（範圍 -10～10）
   tempHpPerHour: 5,       // 到危險時每小時扣血，越偏越多（偏到底約每小時 20）
-  restFullMinutes: 30,    // 休息多久體力回滿
+  restFullMinutes: 30,    // 休息多久體力回滿（每小時回 200，以體質 10 的人為準）
+  // 活動強度：每小時掉多少體力（2026-10-04 依研究暫定，體質 10 的人滿是 100）
+  // 輕：坐著、手工、慢慢走，每小時 200 大卡以下，可以做一整天
+  // 中：走路趕路、搬東西、推拉，200～350 大卡，約 2.5 小時用完；走 50 分休 10 分剛好打平（軍隊行軍）
+  // 重：鏟土、爬坡、扛重物，350～500 大卡，約 30 分鐘用完；做 30 分休 30 分打平（ACGIH 重度工作建議）
+  // 極重：衝刺、打架、拚全力，約 10 分鐘用完
+  intensity: { 輕: 0, 中: 40, 重: 200, 極重: 600 },
+  hotStaminaMult: 1.5,    // 熱到流汗時體力掉得快幾倍
   sleepComfortShift: 6,   // 舒適溫度以活動時為準，睡覺（靜止）時往上加幾度
 };
 const FATIGUE_NAMES = ['清醒', '微倦', '疲倦', '疲憊', '恍惚'];
@@ -247,6 +254,7 @@ function advance(minutes, opts = {}) {
     c.bodyTemp = clamp(c.bodyTemp, -10, 10);
     if (Math.abs(c.bodyTemp) >= RATES.tempDanger) c.hp -= RATES.tempHpPerHour * (1 + Math.abs(c.bodyTemp) - RATES.tempDanger) * h;
     if (opts.sleep || opts.rest) c.stamina += mx.stamina * (dt / RATES.restFullMinutes);
+    else if (opts.intensity) c.stamina -= (RATES.intensity[opts.intensity] || 0) * (sweating ? RATES.hotStaminaMult : 1) * h;
     c.stamina = clamp(c.stamina, 0, maxes(c).stamina);
     if (c.hp <= 0) { c.hp = 0; c.dead = true; }
     cur.clock += dt;
@@ -366,7 +374,8 @@ function buildTurnPrompt(action, actMode) {
 耗時：數字 加 分鐘、小時 或 天（睡覺不用填，網頁會算。走路參考：平路每小時約 5 公里，沒有路約 4 公里，每爬升 600 公尺多加 1 小時）
 飢餓：這段吃東西恢復多少，沒吃填 0（滿是 ${r1(mx.hunger)}；參考：1 點約 67 大卡，一碗飯約 3、一頓正餐約 10、一整天的飯量約 36）
 口渴：這段喝水恢復多少，沒喝填 0（滿是 ${r1(mx.thirst)}；參考：1 點約 40 毫升，一杯水約 6、一公升約 25、一整天的水量約 72）
-體力：這段用力消耗多少，填負數，沒有填 0（滿是 ${r1(mx.stamina)}）
+強度：這段主要的活動強度，輕、中、重、極重 選一個（輕＝坐著、手工、慢走；中＝趕路、搬東西；重＝鏟土、爬坡、扛重物；極重＝衝刺、打架）。網頁會照強度和耗時算體力
+體力：強度以外的額外體力變化，沒有填 0（滿是 ${r1(mx.stamina)}）
 血量：受傷填負數，沒有填 0（滿是 ${r1(mx.hp)}）
 氣溫：現在環境幾度（數字）
 寢具：睡覺才填，0～10（${BED_REF}）
@@ -438,7 +447,8 @@ function readAIReply() {
     if (m) { $('t_dur').value = m[1]; $('t_unit').value = /天|日/.test(m[2] || '') ? '天' : /時/.test(m[2] || '') ? '小時' : '分鐘'; }
   }
   const set = (k, id) => { if (f[k] != null && !isNaN(num(f[k], NaN))) $(id).value = num(f[k]); };
-  set('飢餓', 't_hunger'); set('口渴', 't_thirst'); set('體力', 't_stamina'); set('血量', 't_hp');
+  set('飢餓', 't_hunger'); set('口渴', 't_thirst'); set('體力', 't_stamina');
+  if (f['強度']) { const k = ['極重', '輕', '中', '重'].find(k => f['強度'].includes(k)); if (k) $('t_int').value = k; } set('血量', 't_hp');
   set('氣溫', 't_temp'); set('寢具', 't_bed'); set('被子', 't_cover');
   refreshTurnForm();
   $('aiMsg').textContent = '已填入回合表，檢查後按「套用」。';
@@ -449,6 +459,7 @@ function resetTurnForm() {
   if (!cur) return;
   $('t_type').value = '一般'; $('t_dur').value = 0; $('t_unit').value = '分鐘';
   ['t_hunger', 't_thirst', 't_stamina', 't_hp'].forEach(id => $(id).value = 0);
+  $('t_int').value = '輕';
   $('t_temp').value = cur.temp; $('t_bed').value = 2; $('t_cover').value = 0; $('t_wake').value = '';
   $('t_wmin').value = cur.char.warmMin; $('t_wmax').value = cur.char.warmMax;
   refreshTurnForm();
@@ -520,8 +531,11 @@ function applyTurn() {
     if (unit === '小時') min *= 60; else if (unit === '天') min *= 1440;
     if (ds) { c.stamina = clamp(c.stamina + ds, 0, mx.stamina); if (ds < 0) lines.push(`體力消耗 ${r1(-ds)}。`); }
     if (min > 0) {
-      advance(Math.round(min), { rest: type === '休息' });
-      lines.unshift(type === '休息' ? `${who}休息了 ${durText(min)}。` : `過了 ${durText(min)}。`);
+      const inten = $('t_int').value;
+      const wasUp = c.stamina > 0;
+      advance(Math.round(min), { rest: type === '休息', intensity: type === '一般' ? inten : null });
+      lines.unshift(type === '休息' ? `${who}休息了 ${durText(min)}。` : `過了 ${durText(min)}（${inten}度活動）。`);
+      if (type === '一般' && wasUp && c.stamina <= 0) lines.push(`${who}的體力耗盡了，得停下來休息。`);
     }
   }
 

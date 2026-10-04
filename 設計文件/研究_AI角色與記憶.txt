@@ -54,6 +54,12 @@
 - 睡醒昏沉（sleep inertia）：通常 5～30 分鐘，多半 15～20 分鐘，偶爾到 60 分鐘，嚴重缺眠後更久。主觀清醒度醒來後 2 小時內還在改善。
 - 補眠：整夜沒睡後，下一晚約多睡 110 分鐘。
 
+【工作強度與休息】（2026-10-04 補查）
+- 工作強度分級（OSHA／ACGIH）：輕＝坐著、輕手工，每小時 200 大卡以下；中＝走路、搬、推，200～350；重＝鏟、爬、扛重物，350～500。
+- ACGIH 在炎熱時的建議：中度工作做 45 分休 15 分；重度工作做 30 分休 30 分；更熱時休更多。
+- 軍隊行軍：第一小時休 15 分鐘，之後每走 50 分鐘休 10 分鐘。
+- 一整天 8 小時工作，負荷不宜超過最大攝氧量的約 33%（國際勞工組織）；超過 10 小時的班要再降低強度。強度越高，能持續的時間越短（指數下降）。
+
 【來源】
 - https://tavernsprite.com/blog/sillytavern-character-card-best-practices/
 - https://aituts.com/sillytavern-guide/
@@ -84,3 +90,7 @@
 - https://en.wikipedia.org/wiki/Naismith%27s_rule
 - https://www.dovepress.com/sleep-inertia-current-insights-peer-reviewed-fulltext-article-NSS
 - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11510014/
+- https://www.toolgrit.com/guides/heat-stress-work-rest
+- https://ehrs.upenn.edu/sites/default/files/inline-files/HIPP%20-%20Work-Rest%20Cycle.pdf
+- https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0154073
+- https://en.wikipedia.org/wiki/Loaded_march
