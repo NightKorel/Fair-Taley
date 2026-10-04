@@ -60,6 +60,12 @@
 - 軍隊行軍：第一小時休 15 分鐘，之後每走 50 分鐘休 10 分鐘。
 - 一整天 8 小時工作，負荷不宜超過最大攝氧量的約 33%（國際勞工組織）；超過 10 小時的班要再降低強度。強度越高，能持續的時間越短（指數下降）。
 
+【用力與睡眠】（2026-10-04 補查）
+- 運動、勞動後深層睡眠變多、比較快睡著、半夜比較少醒，越用力越明顯（有劑量關係）。
+- 需要睡的時數沒有跟著變多：連跑 28 天馬拉松的案例，深層睡眠增加約 46%，總睡眠時間反而變短。
+- 大規模調查：粗重工作的人睡太少或睡太多的比例都比較高。
+- 超級馬拉松：長時間用力加上沒睡，越跑越想睡、自覺越吃力，但分不出用力和缺眠各佔多少。
+
 【來源】
 - https://tavernsprite.com/blog/sillytavern-character-card-best-practices/
 - https://aituts.com/sillytavern-guide/
@@ -94,3 +100,7 @@
 - https://ehrs.upenn.edu/sites/default/files/inline-files/HIPP%20-%20Work-Rest%20Cycle.pdf
 - https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0154073
 - https://en.wikipedia.org/wiki/Loaded_march
+- https://pmc.ncbi.nlm.nih.gov/articles/PMC12166452/
+- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7904822/
+- https://www.sciencedirect.com/science/article/abs/pii/S1389945714002482
+- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11001838/

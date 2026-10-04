@@ -31,6 +31,11 @@ const RATES = {
   // 重：鏟土、爬坡、扛重物，350～500 大卡，約 30 分鐘用完；做 30 分休 30 分打平（ACGIH 重度工作建議）
   // 極重：衝刺、打架、拚全力，約 10 分鐘用完
   intensity: { 輕: 0, 中: 40, 重: 200, 極重: 600 },
+  // 用力過後睡得沉（研究：勞動後深層睡眠變多、較快睡著，但需要的時數沒變多）
+  // 醒著時累積「勞累點」：中度每分鐘 0.25、重度 1、極重 2；睡覺時品質最多加兩成（120 點，約重活 2 小時），睡完歸零
+  exertPerMin: { 輕: 0, 中: 0.25, 重: 1, 極重: 2 },
+  exertFull: 120,
+  exertSleepBonus: 0.2,
   hotStaminaMult: 1.5,    // 熱到流汗時體力掉得快幾倍
   sleepComfortShift: 6,   // 舒適溫度以活動時為準，睡覺（靜止）時往上加幾度
 };
@@ -253,6 +258,7 @@ function advance(minutes, opts = {}) {
     else c.bodyTemp = c.bodyTemp > 0 ? Math.max(0, c.bodyTemp - RATES.tempRecoverPerHour * h) : Math.min(0, c.bodyTemp + RATES.tempRecoverPerHour * h);
     c.bodyTemp = clamp(c.bodyTemp, -10, 10);
     if (Math.abs(c.bodyTemp) >= RATES.tempDanger) c.hp -= RATES.tempHpPerHour * (1 + Math.abs(c.bodyTemp) - RATES.tempDanger) * h;
+    if (opts.intensity) c.exert = (c.exert || 0) + (RATES.exertPerMin[opts.intensity] || 0) * dt;
     if (opts.sleep || opts.rest) c.stamina += mx.stamina * (dt / RATES.restFullMinutes);
     else if (opts.intensity) c.stamina -= (RATES.intensity[opts.intensity] || 0) * (sweating ? RATES.hotStaminaMult : 1) * h;
     c.stamina = clamp(c.stamina, 0, maxes(c).stamina);
@@ -268,6 +274,7 @@ function sleepQuality(c, bed) {
   if (felt < lo || felt > hi) q *= 0.6;
   const mx = maxes(c);
   if (c.hunger / mx.hunger < 0.2 || c.thirst / mx.thirst < 0.2) q *= 0.6;
+  q *= 1 + RATES.exertSleepBonus * Math.min(1, (c.exert || 0) / RATES.exertFull);
   return q;
 }
 
@@ -523,7 +530,9 @@ function applyTurn() {
     if (c.groggyUntil === -2) c.groggyUntil = cur.clock + RATES.groggyMinutes;
     else if (c.groggyUntil === -3) c.groggyUntil = cur.clock + RATES.wakeGroggyMinutes;
     sleepCover = 0;
-    lines.push(`${who}睡了 ${r1(hours)} 小時（寢具 ${bed}${num($('t_cover').value) ? '、被子 ' + num($('t_cover').value) : ''}），${woken ? '中途被弄醒' : result}。`);
+    const tired = (c.exert || 0) >= RATES.exertFull / 2;
+    c.exert = 0;
+    lines.push(`${who}睡了 ${r1(hours)} 小時（寢具 ${bed}${num($('t_cover').value) ? '、被子 ' + num($('t_cover').value) : ''}），${woken ? '中途被弄醒' : result}${tired && !woken && q >= RATES.badSleepQuality ? '，累了一天睡得很沉' : ''}。`);
     if (fatigueStage(c) >= 1) lines.push(`醒來時還沒完全恢復，疲勞：${FATIGUE_NAMES[fatigueStage(c)]}。`);
   } else {
     let min = num($('t_dur').value);
