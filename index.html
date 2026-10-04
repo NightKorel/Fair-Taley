@@ -179,6 +179,16 @@
   </div>
 </main>
 
+<div id="promptModal" class="modal hidden">
+  <div class="modalBox">
+    <h3>提示詞</h3>
+    <p class="small muted" id="promptHint"></p>
+    <p class="small" id="promptStatus"></p>
+    <textarea id="promptText" rows="12" readonly></textarea>
+    <div class="row gap"><button onclick="copyAgain()">複製</button><button class="ghost" onclick="closePrompt()">關閉</button></div>
+  </div>
+</div>
+
 <div id="toast" class="toast hidden"></div>
 
 <script src="app.js"></script>

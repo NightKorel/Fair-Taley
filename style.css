@@ -125,6 +125,15 @@ button:hover, .button:hover { filter: brightness(1.1); }
 
 details summary { cursor: pointer; color: var(--accent); margin: 6px 0; }
 
+.modal {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: center; justify-content: center; z-index: 9; padding: 16px;
+}
+.modalBox {
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  padding: 16px; width: 100%; max-width: 720px; max-height: 90vh; overflow-y: auto;
+}
+#promptStatus { color: var(--accent); }
 .toast {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
   background: var(--accent); color: var(--accent-text);

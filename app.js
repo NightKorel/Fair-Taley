@@ -139,7 +139,7 @@ ${idea}
 個性：（短的具體行為句，例「被逼急就開玩笑帶過」，用；分隔）
 背景：
 說話方式：`;
-  copyText(p, '提示詞已複製，貼給 AI 吧');
+  copyText(p, '貼給 AI，再把 AI 的回覆貼回「把 AI 的回覆貼在這裡」那格。');
 }
 
 function parseLines(text) {
@@ -414,22 +414,32 @@ function copyTurnPrompt() {
   if (!text) { toast('先寫這回合要做什麼'); return; }
   const p = buildTurnPrompt(text, mode);
   pushUndo(); addLog(mode, text); $('input').value = ''; save(); renderLog();
-  copyText(p, '提示詞已複製，貼給 AI，再把回覆貼回下面');
+  copyText(p, '貼給 AI，再把 AI 的整段回覆貼回「貼上 AI 回覆」，按讀取。');
   $('pasteBox').open = true;
 }
 
+// 提示詞視窗：跳出來時自動複製；自動複製失敗就提示按按鈕再試
 function copyText(text, msg) {
-  const done = () => toast(msg);
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, msg));
-  } else fallbackCopy(text, msg);
+  $('promptText').value = text;
+  $('promptHint').textContent = msg;
+  $('promptModal').classList.remove('hidden');
+  tryCopy(text);
 }
-function fallbackCopy(text, msg) {
-  const ta = document.createElement('textarea');
-  ta.value = text; document.body.appendChild(ta); ta.select();
-  try { document.execCommand('copy'); toast(msg); } catch (e) { prompt('請手動複製：', text); }
-  ta.remove();
+function tryCopy(text) {
+  const ok = () => { $('promptStatus').textContent = '已自動複製，直接貼給 AI 就好。'; toast('提示詞已複製'); };
+  const fail = () => {
+    const ta = $('promptText');
+    ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+    let done = false;
+    try { done = document.execCommand('copy'); } catch (e) {}
+    if (done) ok();
+    else $('promptStatus').textContent = '自動複製失敗，請按「複製」，或長按下面的文字全選複製。';
+  };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(ok, fail);
+  else fail();
 }
+function copyAgain() { tryCopy($('promptText').value); }
+function closePrompt() { $('promptModal').classList.add('hidden'); }
 
 function readAIReply() {
   const raw = $('aiReply').value.trim();
